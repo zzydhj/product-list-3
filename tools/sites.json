@@ -374,7 +374,6 @@
         "For-BGS-Slab",
         "Booster-Box-(5mm)",
         "Booster-Bundle&Build-(5mm)",
-        "PTCG-ETB-(5mm)",
         "PTCG-ETB-(5mm+8mm)",
         "Japanese-Booster-(5mm)",
         "Japanese-standard-(5mm)",
@@ -436,12 +435,7 @@
         "星空蓝-水贴A-6",
         "星空黑-水贴A-7",
         "星空红-水贴A-9",
-        "幻影蓝A-10",
-        "For-PSA-Red",
-        "For-PSA-Yellow",
-        "For-PSA-Blue",
-        "3 For Metal PSA Slab",
-        "For-PSA-Slab"
+        "幻影蓝A-10"
       ],
       "promo": {
         "enabled": true,
@@ -522,7 +516,88 @@
           ]
         }
       ],
-      "overrides": {},
+      "overrides": {
+        "For-PSA-Red": {
+          "moq": 50,
+          "form": "normal"
+        },
+        "For-PSA-Yellow": {
+          "form": "normal",
+          "moq": 50
+        },
+        "For-PSA-Blue": {
+          "form": "normal",
+          "moq": 50
+        },
+        "For-PSA-Slab": {
+          "form": "normal",
+          "moq": 50
+        },
+        "3 For Metal PSA Slab": {
+          "form": "normal",
+          "moq": 50
+        },
+        "For-PSA": {
+          "moq": 50
+        },
+        "For-BGS": {
+          "moq": 50
+        },
+        "3 for PSA": {
+          "moq": 50
+        },
+        "For-BGS-Slab": {
+          "moq": 50
+        },
+        "Booster-Box-(5mm)": {
+          "moq": 50
+        },
+        "Booster-Bundle&Build-(5mm)": {
+          "moq": 50
+        },
+        "PTCG-ETB-(5mm+8mm)": {
+          "moq": 50
+        },
+        "Japanese-Booster-(5mm)": {
+          "moq": 50
+        },
+        "Japanese-standard-(5mm)": {
+          "moq": 50
+        },
+        "PTCG-151-UPC-(5mm+8mm)": {
+          "moq": 50
+        },
+        "Center-ETB-(5mm)": {
+          "moq": 50
+        },
+        "PTCG-Mario-Pikachu-(5mm)": {
+          "moq": 50
+        },
+        "PTCG-SPC-(5mm+8mm)": {
+          "moq": 50
+        },
+        "Blooming-Water-(5mm+8mm)": {
+          "moq": 50
+        },
+        "151-Booster-Bundle-Display-(5mm+8mm)": {
+          "moq": 50
+        },
+        "PTCG-Mega-Brave-(5mm+8mm)": {
+          "moq": 50
+        },
+        "Booster-Acrylic-Case": {
+          "moq": 50
+        },
+        "ETB-Acrylic-Case": {
+          "moq": 50
+        },
+        "HY016-A": {
+          "form": "presale"
+        },
+        "HY003-A": {
+          "form": "presale"
+        }
+      },
       "raw": {
         "TITLE": [
           "    <title>Selection and Order Form</title>"

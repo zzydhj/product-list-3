@@ -66,13 +66,55 @@
             box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.5) !important;
         }
 
-        /* 停用产品（ID 登记在 DISABLED_PRODUCT_IDS 中）：
-           图片保持原样（彩色、可点击放大），仅数量输入框由 disabled 属性禁用，并显示灰底灰字 */
+        /* 停用与预售产品（数量行里 form: 'disabled' / 'presale'）：
+           图片保持原样（彩色、可点击放大），数量框由 disabled 属性禁用并显示灰底灰字 */
         .product-card.disabled input[type=number] {
             background-color: #f3f4f6 !important;
             color: #9ca3af !important;
             cursor: not-allowed;
         }
+
+        /* 预售与停用可见化样式：开始 */
+        /* 停用与预售整卡：只把输入框涂灰不够——客户扫一眼网格分不出哪一格不能填。
+           放在 .product-card.active 之后，两张卡同时带上这两个类时由本规则说话。 */
+        .product-card.disabled {
+            background-color: #f8fafc !important;
+            border-color: #cbd5e1 !important;
+        }
+
+        .product-card.disabled h3 {
+            color: #94a3b8 !important;
+        }
+
+        /* 预售文字画在 placeholder 里做不到渐变（::placeholder 不支持 background-clip: text），
+           所以在数量框上盖一层真文字，复用 .sidebar-title 那支主题渐变（深藏青 → 蓝 → 亮蓝）。
+           .qty-wrap 只是给这层文字一个定位参照；不支持渐变裁剪的浏览器退回纯蓝，不会隐身。 */
+        .qty-wrap {
+            position: relative;
+        }
+
+        .presale-flag {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            pointer-events: none;
+            color: #1d4ed8;
+            white-space: nowrap;
+        }
+
+        @supports ((-webkit-background-clip: text) or (background-clip: text)) {
+            .presale-flag {
+                background: linear-gradient(90deg, #1e3a8a, #3b82f6 70%, #60a5fa);
+                -webkit-background-clip: text;
+                background-clip: text;
+                -webkit-text-fill-color: transparent;
+                color: transparent;
+            }
+        }
+        /* 预售与停用可见化样式：结束 */
 
         input[type=number]::-webkit-inner-spin-button,
         input[type=number]::-webkit-outer-spin-button {
@@ -844,6 +886,24 @@
             </div>
         </div>
     </div>
+    <!-- 提示弹窗（替代浏览器原生 alert）开始 -->
+    <!-- 起订量不够、没选型号、没填名字这三种提示统一走这里：
+         原生 alert 挂在窗口顶部、样式不受控，和页面里已有的下载弹窗不是一套东西。 -->
+    <div id="notice-modal"
+        class="fixed inset-0 z-[9999] bg-black/60 hidden flex items-center justify-center opacity-0 transition-opacity duration-300"
+        onclick="if (event.target === this) closeNotice();">
+        <div class="bg-white rounded-xl p-6 w-[90%] max-w-sm transform scale-95 transition-transform duration-300"
+            id="notice-modal-content">
+            <h3 class="text-lg font-bold text-gray-800 mb-2 m-0" id="notice-title">Notice</h3>
+            <p class="text-sm text-gray-500 mb-5 m-0" id="notice-text"></p>
+            <div class="flex justify-end space-x-3">
+                <button onclick="closeNotice()"
+                    class="px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-bold shadow-md transition-colors border-none"
+                    style="background-color: #2563eb !important; color: white !important;">OK</button>
+            </div>
+        </div>
+    </div>
+    <!-- 提示弹窗（替代浏览器原生 alert）结束 -->
 
     <script>
         // ============================================================
@@ -1144,15 +1204,27 @@
             const moq = moqOf(id);
             if (!moq || input.value === '' || Number(input.value) >= moq) return;
             input.value = '';
-            if (noisy) alert(`Minimum order for this product is ${moq}. Please enter ${moq} or more.`);
+            if (noisy) showNotice('Minimum order quantity', `This product requires at least ${moq}. Please enter ${moq} or more. (该型号起订量 ${moq}，请输入 ${moq} 或更多。)`, input);
         }
         function handleBlur(id, input) {
+            if (isNoQty(id)) return; // 停用与预售的框本来就填不进东西，不必再走清洗与统计
             fmtInput(input);
             enforceMin(id, input, true);
             updateVisuals(id, input);
             calculateTotals();
             saveToStorage();
         }
+        // 框里那句灰字就是这个型号的下单提示，三个状态共用这一个位置：
+        //   预售 -> 空（框上另有一层渐变 Pre Sale，不必重复）
+        //   有起订量 -> Min. N（客户不用一个个填了才知道门槛）
+        //   其余 -> 0
+        // 停用与预售都不能下单，所以不提示起订量，免得客户照着数字填。
+        function phOf(p) {
+            if (isPreSale(p.id)) return '';
+            const moq = isNoQty(p.id) ? 0 : moqOf(p.id);
+            return moq ? `Min. ${moq}` : '0';
+        }
+
         // ================= 数量规则结束 =================
 
         // ================= 分组配置（category0 映射）=================
@@ -1423,11 +1495,12 @@
                         <div class="h-10 flex items-center justify-center overflow-hidden -mt-2.5 -mb-0.5">
                             <h3 class="text-sm leading-4 text-gray-700 font-bold line-clamp-2 break-all text-center m-0 p-0 w-full">${product.name}</h3>
                         </div>
+                        <div class="qty-wrap">
                         <input 
                             type="number" 
                             min="0" 
                             step="1" 
-                            placeholder="${isPreSale(product.id) ? 'Pre Sale' : '0'}" 
+                            placeholder="${phOf(product)}" 
                             class="w-full border border-gray-300 rounded px-2 py-1 text-center font-bold text-gray-800 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white"
                             style="border: 1px solid #d1d5db !important;"
                             oninput="handleInput('${product.id}', this)"
@@ -1435,6 +1508,8 @@
                             id="input-${product.id}"
                             ${isNoQty(product.id) ? 'disabled' : ''}
                         >
+                        ${isPreSale(product.id) ? '<span class="presale-flag">Pre Sale</span>' : ''}
+                        </div><!-- qty-wrap -->
                     </div>
                 </div>
             `).join('');
@@ -1448,6 +1523,7 @@
         }
 
         function updateVisuals(id, input) {
+            if (isNoQty(id)) return; // 停用与预售不参与选中态：脚本塞值也不该亮起蓝框
             const card = document.getElementById(`card-${id}`);
             const val = parseInt(input.value) || 0;
 
@@ -1461,6 +1537,7 @@
         }
 
         function handleInput(id, input) {
+            if (isNoQty(id)) return; // 同上，且不把填不进去的数量写进暂存与统计
             updateVisuals(id, input);
             calculateTotals();
             saveToStorage();
@@ -1577,7 +1654,7 @@
         function showDownloadModal() {
             const hasData = products.some(p => getQty(p.id) > 0);
             if (!hasData) {
-                alert("Please select at least one product! (请至少输入一个产品的数量)");
+                showNotice('Nothing selected', 'Please enter a quantity for at least one product. (请至少为一个产品填写数量)');
                 return;
             }
             const modal = document.getElementById('download-modal');
@@ -1602,11 +1679,43 @@
             setTimeout(() => modal.classList.add('hidden'), 300);
         }
 
+        // ================= 提示弹窗：替代浏览器原生 alert =================
+        // 三个提示（起订量、没选型号、没填名字）共用这一个组件，别再各写一份。
+        // back 传进来的是触发提示的那个输入框，关掉后把光标还回去，客户好接着改。
+        let noticeBack = null;
+        function showNotice(title, text, back) {
+            const modal = document.getElementById('notice-modal');
+            const content = document.getElementById('notice-modal-content');
+            document.getElementById('notice-title').textContent = title;
+            document.getElementById('notice-text').textContent = text;
+            noticeBack = back || null;
+            modal.classList.remove('hidden');
+            void modal.offsetWidth;
+            modal.classList.remove('opacity-0');
+            content.classList.remove('scale-95');
+            content.classList.add('scale-100');
+            setTimeout(() => { const btn = modal.querySelector('button'); if (btn) btn.focus(); }, 300);
+        }
+        function closeNotice() {
+            const modal = document.getElementById('notice-modal');
+            const content = document.getElementById('notice-modal-content');
+            if (modal.classList.contains('hidden')) return;
+            modal.classList.add('opacity-0');
+            content.classList.remove('scale-100');
+            content.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+            const back = noticeBack;
+            noticeBack = null;
+            if (back && document.activeElement !== back) { try { back.focus(); } catch (e) { } }
+        }
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeNotice(); });
+        // ================= 提示弹窗结束 =================
+
         // ================= 恢复：纯文本 CSV 导出逻辑 =================
         function confirmDownload() {
             let nameInput = document.getElementById('customer-name').value.trim();
             if (!nameInput) {
-                alert("Please enter your name. (请输入您的名字)");
+                showNotice('Name required', 'Please enter your name before exporting. (导出前请先填写名字)');
                 return;
             }
 

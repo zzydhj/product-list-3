@@ -525,11 +525,25 @@ export function validate(products, sites) {
       if (!products.some((p) => p.id === id)) {
         errors.push({ index: -1, field: 'overrides', msg: `站点 ${s.key}: overrides 里的 ${id} 在产品库中不存在` });
       }
+      // 覆盖是给「本站要显示的型号」用的：不是成员的话这条配置永远轮不到执行。
+      // 留着不但没人看得懂，将来把型号加回本站时还会悄悄复活一份旧设置。
+      // 只在它确实存在于产品库时才查成员关系：删产品留下的幽灵 id 上面已经报得更准，不刷两条。
+      if (Array.isArray(s.members) && products.some((p) => p.id === id) && !s.members.includes(id)) {
+        errors.push({ index: -1, field: 'overrides', msg: `站点 ${s.key}: ${id} 不是本站成员，这条本站覆盖永远不会生效（要它在本站卖就先「从产品库添加型号到本站」，不然就删掉这条覆盖）` });
+      }
       if (ov.form !== undefined && !FORM_STATES.includes(ov.form)) {
         errors.push({ index: -1, field: 'overrides', msg: `站点 ${s.key}: ${id} 的本站状态非法：${ov.form}` });
       }
       if (ov.moq !== undefined && (!Number.isInteger(ov.moq) || ov.moq < 1)) {
         errors.push({ index: -1, field: 'overrides', msg: `站点 ${s.key}: ${id} 的本站起订量需是正整数：${JSON.stringify(ov.moq)}` });
+      }
+    }
+    // 画册排除表里的非成员同样是死配置：画册先按成员过滤，轮不到它（幽灵 id 上面已报）
+    if (Array.isArray(s.members)) {
+      for (const id of s.catalogOff || []) {
+        if (products.some((p) => p.id === id) && !s.members.includes(id)) {
+          errors.push({ index: -1, field: 'catalogOff', msg: `站点 ${s.key}: 画册排除表里的 ${id} 不是本站成员，这条排除没有作用，可以直接删掉` });
+        }
       }
     }
     // 摘取型站点（如 TPU）本来就只装部分分组，不报未归属

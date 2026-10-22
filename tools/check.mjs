@@ -78,7 +78,7 @@ const WHITELIST = [
       "if (isNoQty(id)) return 0;",
       "<div class=\"product-card bg-white border border-gray-200 rounded-lg overflow-hidden flex flex-col ${(product.category === currentCategory || currentCategory === null) && getGroupForCategory(product.category) === currentGroup ? '' : 'hidden'} ${isNoQty(product.id) ? 'disabled' : ''}\"",
       "step=\"1\"",
-      "placeholder=\"${isPreSale(product.id) ? 'Pre Sale' : '0'}\"",
+      "placeholder=\"${phOf(product)}\"",
       "onblur=\"handleBlur('${product.id}', this)\"",
       "${isNoQty(product.id) ? 'disabled' : ''}",
       "if (isNoQty(id)) return; // 停用与预售型号不恢复历史数量",
@@ -101,6 +101,50 @@ const WHITELIST = [
       '// 确保网格渲染、导出订单、数量统计等所有逻辑都只包含该分组的产品',
     ],
     blockDel: { start: 'for (let i = products.length - 1; i >= 0; i--) {', end: '}', contains: "products[i].category0 !== 'Grading Slab Protection'" },
+  },
+  {
+    // 2026-10-22 你要求把起订量提示从浏览器顶部那个原生框换成页面居中、与页面同风格的弹窗。
+    // 弹窗结构与动效照抄下载弹窗，用的类全部是页面里已有的，tailwind.css 不需要重新编译。
+    id: 'P5',
+    why: '新增提示弹窗的 HTML 结构',
+    sites: ['card-holder', 'TPU'],
+    blockAdd: { start: '<!-- 提示弹窗（替代浏览器原生 alert）开始 -->', end: '<!-- 提示弹窗（替代浏览器原生 alert）结束 -->' },
+  },
+  {
+    id: 'P6',
+    why: '新增提示弹窗的 JS 实现，并把两处原生 alert 调用换成它（起订量那处在 P3 已登记的新增块内，不用单独登记）',
+    sites: ['card-holder', 'TPU'],
+    blockAdd: { start: '// ================= 提示弹窗：替代浏览器原生 alert =================', end: '// ================= 提示弹窗结束 =================' },
+    del: [
+      'alert("Please select at least one product! (请至少输入一个产品的数量)");',
+      'alert("Please enter your name. (请输入您的名字)");',
+    ],
+    add: [
+      "showNotice('Nothing selected', 'Please enter a quantity for at least one product. (请至少为一个产品填写数量)');",
+      "showNotice('Name required', 'Please enter your name before exporting. (导出前请先填写名字)');",
+    ],
+  },
+  {
+    // 2026-10-22 你要求预售在页面上看得出来：整卡淡灰 + Pre Sale 用主题渐变文字。
+    // 渐变直接复用 .sidebar-title 那支（深藏青 → #3b82f6 → 亮蓝），不另造颜色。
+    // placeholder 里画不出渐变（::placeholder 不支持 background-clip: text），
+    // 所以改成在数量框上叠一层真文字，视觉位置与原来一致。
+    id: 'P7',
+    why: '预售/停用卡片整卡可见化 + Pre Sale 渐变文字样式',
+    sites: ['card-holder', 'TPU'],
+    blockAdd: { start: '/* 预售与停用可见化样式：开始 */', end: '/* 预售与停用可见化样式：结束 */' },
+  },
+  {
+    id: 'P8',
+    why: '数量框外包一层定位参照 .qty-wrap 并叠预售文字；updateVisuals / handleInput 加 isNoQty 守卫（脚本塞值不再亮起假选中蓝框）',
+    sites: ['card-holder', 'TPU'],
+    add: [
+      '<div class="qty-wrap">',
+      '</div><!-- qty-wrap -->',
+      "${isPreSale(product.id) ? '<span class=\"presale-flag\">Pre Sale</span>' : ''}",
+      'if (isNoQty(id)) return; // 停用与预售不参与选中态：脚本塞值也不该亮起蓝框',
+      'if (isNoQty(id)) return; // 同上，且不把填不进去的数量写进暂存与统计',
+    ],
   },
 ];
 
@@ -260,16 +304,21 @@ const products = JSON.parse(fs.readFileSync(path.join(TOOLS, 'products.json'), '
 // 人工核对过的线上真相。改动它们必须先确认是「内容变更」而不是「工具把数据弄错了」。
 // 变更史：2026-10-20 经你授权把 5 个已下架产品（Acrylic display box 下的 For-PSA 系列）
 // 移出画册，catalogVisible 由 415 调为 410，从此画册与选款表生效数一致。
+// 2026-10-22 你在主站把这 5 个恢复成「正常可选」并设了本站起订量 50、放回画册：产品库里
+// 它们仍是 hidden（所以 TPU 与其他站一律不变），只有 card-holder 写了本站覆盖，
+// 于是 formLive 与 catalogVisible 回到 415，Acrylic display box 分组 19 变 24。
+// 2026-10-22 你又从产品库彻底删除了 PTCG-ETB-(5mm)（各站成员/覆盖/画册排除里的引用已自动
+// 清干净，四个页面 0 处残留）：formLive 与 catalogVisible 变 414，该分组 24 变 23。
 // 置灰（disabled）的 5 个仍留在画册里：那是你故意留的「可看不可选」展示位。
 const EXPECT = {
-  formLive: 410,
+  formLive: 414,
   tpuVisible: 182,
-  catalogVisible: 410,
+  catalogVisible: 414,
   // 锚点按「分组名 / 分类名 → 可见卡片数」配，而不是按位置配：
   // 分组与分类的先后你在后台随时可以调，调顺序不该被误判成“数据错了”。
   groupVisible: {
     'Grading Slab Protection': 182, 'Silicone Bumper': 40, 'PSA/BGS Aluminum': 126,
-    'Magnetic PSA Base': 11, 'Acrylic display box': 19, 'PP Card Binder': 16, 'PP Card Divider': 16,
+    'Magnetic PSA Base': 11, 'Acrylic display box': 23, 'PP Card Binder': 16, 'PP Card Divider': 16,
   },
   tpuCats: {
     'PSA Back Single Panel': 48, 'PSA Single Panel No Glitter': 5, 'PSA with Double panels': 22,

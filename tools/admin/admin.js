@@ -224,9 +224,20 @@ function removeMember(p) {
   snapshot();
   materialiseMembers(s);
   s.members = s.members.filter((x) => x !== p.id);
+  // 本站覆盖与画册排除表里它的条目一起带走：它已不是本站成员，这些配置永远轮不到执行；
+  // 留着不但没人看得懂，将来把型号加回本站时还会悄悄复活一份他自己都忘了的旧设置。
+  const hadOv = Boolean(s.overrides && s.overrides[p.id]);
+  if (hadOv) delete s.overrides[p.id];
+  const hadOff = Array.isArray(s.catalogOff) && s.catalogOff.includes(p.id);
+  if (hadOff) s.catalogOff = s.catalogOff.filter((x) => x !== p.id);
   S.checked.delete(p.id);
+  // 与真删除同一套处理：卡片已从本站网格消失，右侧就不能再停在一个左边选不中的型号上，
+  // 否则覆盖控件会静默回落到默认值，看着像“覆盖还在、只是表单脏了”。
+  if (S.selId === p.id) S.selId = null;
   renderAll();
-  toast(`已把 ${p.id} 移出 ${s.key}（产品库和其他站点未受影响）`);
+  const cleaned = hadOv && hadOff ? '，本站覆盖与画册排除里的它一并清掉了'
+    : hadOv ? '，本站覆盖也一并清掉了' : hadOff ? '，画册排除里的它也一并清掉了' : '';
+  toast(`已把 ${p.id} 移出 ${s.key}（产品库和其他站点未受影响${cleaned}）`);
 }
 
 // ---------------------------------------------------------------- 从产品库挑型号（勾选式）
