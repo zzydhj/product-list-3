@@ -441,6 +441,38 @@ export function normalizeCfg(o) {
   return out;
 }
 
+// ---------------------------------------------------------------- 覆盖归一化
+
+/** 起订量的生效口径：只有正整数才算数，0 / 空 / 小数一律等于「不限」（与 validate 同一把尺）*/
+export const moqOf = (v) => (Number.isInteger(v) && v > 0 ? v : undefined);
+
+/**
+ * 删掉「值等于产品库默认值」的本站覆盖，返回删掉的条目数。
+ *
+ * 为什么要清：sites.json 里的 overrides 只该存与默认值不同的那一部分（SITES_README 也是这么
+ * 约定的）。但这个约定只在「站点侧写覆盖」时执行过 —— 反方向没人管：你先在站点把它改成正常，
+ * 之后回产品库把它上架，那条覆盖就跟默认值一样了。它不改变任何输出（生成时 {...p, ...ov}），
+ * 却会让界面一直挂着「本站改为正常」骗人，还会把这个型号永久钉死在产品库当前的值上：
+ * 将来你在产品库再下架它，本站会因为那条旧覆盖仍然显示，看起来像「下架不生效」。
+ *
+ * 只清 form / moq 两类值相同的覆盖。幽灵 id（产品库里没有）与不是本站成员的覆盖是
+ * 真错误，归 validate 拦，这里不静默修 —— 静默删掉等于把事故现场抹掉。
+ */
+export function pruneOverrides(products, sites) {
+  const byId = new Map(products.map((p) => [p.id, p]));
+  let dropped = 0;
+  for (const s of sites) {
+    for (const [id, ov] of Object.entries(s.overrides || {})) {
+      const p = byId.get(id);
+      if (!p) continue;
+      if (ov.form !== undefined && ov.form === p.form) { delete ov.form; dropped++; }
+      if (ov.moq !== undefined && moqOf(ov.moq) === moqOf(p.moq)) { delete ov.moq; dropped++; }
+      if (!Object.keys(ov).length) delete s.overrides[id];
+    }
+  }
+  return dropped;
+}
+
 // ---------------------------------------------------------------- 校验
 
 // normal 正常可选 / disabled 置灰可看 / presale 预售（显示 Pre Sale、不可填）/ hidden 下架（写成注释行）

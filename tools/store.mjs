@@ -2,7 +2,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { TOOLS, validate } from './lib.mjs';
+import { TOOLS, validate, pruneOverrides } from './lib.mjs';
 
 export const PRODUCTS_FILE = path.join(TOOLS, 'products.json');
 export const SITES_FILE = path.join(TOOLS, 'sites.json');
@@ -26,6 +26,9 @@ export function runValidation(products, sites) {
 
 /** 写盘前先备份，最多留 KEEP_BACKUPS 份，误操作可以回滚 */
 export function saveState(products, sites) {
+  // 写盘是唯一的归一化时机：与产品库默认值相同的本站覆盖没有语义，不留进文件（见 pruneOverrides）
+  const n = pruneOverrides(products, sites);
+  if (n) console.log(`[清理] 删掉 ${n} 条与产品库默认值相同的本站覆盖（页面输出不变）`);
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   const backups = [];
   if (fs.existsSync(PRODUCTS_FILE)) {

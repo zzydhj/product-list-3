@@ -2494,21 +2494,21 @@
       "name": "For-PSA-Red",
       "category": "Acrylic display box",
       "image": "https://hande.zzydhj.com/hande/ac-psa-red.jpg",
-      "form": "hidden"
+      "form": "normal"
     },
     {
       "id": "For-PSA-Yellow",
       "name": "For-PSA-Yellow",
       "category": "Acrylic display box",
       "image": "https://hande.zzydhj.com/hande/ac-psa-yellow.jpg",
-      "form": "hidden"
+      "form": "normal"
     },
     {
       "id": "For-PSA-Blue",
       "name": "For-PSA-Blue",
       "category": "Acrylic display box",
       "image": "https://hande.zzydhj.com/hande/ac-psa-blue.jpg",
-      "form": "hidden"
+      "form": "normal"
     },
     {
       "id": "3 for PSA",
@@ -2522,14 +2522,14 @@
       "name": "3 For Metal PSA Slab",
       "category": "Acrylic display box",
       "image": "https://hande.zzydhj.com/hande/3-For-Metal-PSA-Slab.jpg",
-      "form": "hidden"
+      "form": "normal"
     },
     {
       "id": "For-PSA-Slab",
       "name": "For-PSA-Slab",
       "category": "Acrylic display box",
       "image": "https://hande.zzydhj.com/hande/ac-psa-slab.jpg",
-      "form": "hidden"
+      "form": "normal"
     },
     {
       "id": "For-BGS-Slab",

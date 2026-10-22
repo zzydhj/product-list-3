@@ -97,10 +97,28 @@ const FORM_LABEL = { normal: '正常', disabled: '置灰', presale: '预售', hi
  * 规矩），所以在「TPU 的画册」里看到的状态与在 TPU 里看到的必须一致。
  */
 const ovSite = () => albumSite();
-/** 本站对某型号的覆盖（没有就返回空对象，省掉一堆判空）*/
+/**
+ * 本站对某型号「真正与产品库不同」的覆盖（没有就返回空对象，省掉一堆判空）。
+ * 与默认值同值的条目不算例外：你先在站点把它改成正常、之后回产品库把它上架，
+ * 那条覆盖就不再有语义（生成时 {...p, ...ov} 输出完全一样），但它会让卡片一直挂着
+ * 「本站改为正常」、把状态单选钉在「正常可选」而不是「跟随产品库」。写盘时由
+ * store.saveState 调用 lib.pruneOverrides 删掉，这里的判读口径与它一致：
+ * 未保存前界面也不能骗人。
+ */
+const moqNum = (v) => (Number.isInteger(v) && v > 0 ? v : undefined);
+const SAME_AS_LIB = {
+  form: (p, v) => v === p.form,
+  moq: (p, v) => moqNum(v) === moqNum(p.moq),
+};
 const ovOf = (p) => {
   const s = ovSite();
-  return (s && s.overrides ? s.overrides[p.id] : null) || {};
+  const raw = (s && s.overrides ? s.overrides[p.id] : null) || {};
+  const out = {};
+  for (const [k, v] of Object.entries(raw)) {
+    const same = SAME_AS_LIB[k];
+    if (!same || !same(p, v)) out[k] = v;      // 不认识的键一律算例外，别把以后新增的字段吞了
+  }
+  return out;
 };
 /** 某型号在某个站点生效的状态：本站覆盖优先于产品库默认值 */
 function stateAt(p, s) {
