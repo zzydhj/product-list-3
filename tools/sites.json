@@ -518,23 +518,18 @@
       ],
       "overrides": {
         "For-PSA-Red": {
-          "moq": 50,
-          "form": "normal"
+          "moq": 50
         },
         "For-PSA-Yellow": {
-          "form": "normal",
           "moq": 50
         },
         "For-PSA-Blue": {
-          "form": "normal",
           "moq": 50
         },
         "For-PSA-Slab": {
-          "form": "normal",
           "moq": 50
         },
         "3 For Metal PSA Slab": {
-          "form": "normal",
           "moq": 50
         },
         "For-PSA": {
@@ -856,7 +851,14 @@
           ]
         }
       ],
-      "overrides": {},
+      "overrides": {
+        "HY016-A": {
+          "form": "presale"
+        },
+        "HY003-A": {
+          "form": "presale"
+        }
+      },
       "raw": {
         "TITLE": [
           "    <title>Selection and Order Form</title>"
