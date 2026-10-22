@@ -1,0 +1,19 @@
+# 上线内容一律由 node tools/publish.mjs 生成，不提交
+dist/
+
+# 数据备份（每次保存自动滚动，最多 20 份，只留在本机）
+tools/*.bak-*
+# 回滚前拍的成对快照（最多留 5 组）
+tools/*.pre-restore-*
+# 生成器上一轮往页面写了哪些型号（护栏用它区分「自己写的」与「人手加的」）
+tools/last-build.json
+
+# 本地验证时拍的管理界面截图（不是站点资源，也不进部署目录）
+/*.png
+
+# 依赖与系统文件
+node_modules/
+.idea/
+.vscode/
+Thumbs.db
+.DS_Store

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>选款表数据后台</title>
+    <link rel="stylesheet" href="admin.css">
+</head>
+
+<body>
+
+    <header class="topbar">
+        <div class="brand">
+            <span class="dot"></span>
+            <strong>选款表数据后台</strong>
+            <span class="sub">改数据 → 生成成品页 → 回归校验 → 组装 dist 交付包；线上只传 dist</span>
+        </div>
+
+        <div class="site-pick">
+            <label for="siteSelect">正在编辑</label>
+            <select id="siteSelect"></select>
+            <span id="dirtyFlag" class="dirty" hidden>有未保存的修改</span>
+        </div>
+
+        <div class="actions">
+            <button id="btnUndo" title="Ctrl+Z">撤销</button>
+            <button id="btnRedo" title="Ctrl+Y">重做</button>
+            <button id="btnAdd">＋ 新增产品</button>
+            <button id="btnValidate">校验</button>
+            <button id="btnImages">图片可达性检测</button>
+            <button id="btnCheck">回归校验</button>
+            <button id="btnPreview" title="打开当前站点的成品页预览；保存后它会自动刷新">预览本站</button>
+            <button id="btnSave" class="primary" title="写盘 → 生成页面 → 回归校验 → 组装 dist；校验不过不会更新 dist">保存并生成</button>
+        </div>
+    </header>
+
+    <!-- 只在服务端进程比代码旧时出现：界面是新的、校验逻辑是旧的，不提示会让人以为功能坏了 -->
+    <div class="stale" id="staleWarn" hidden>
+        ⚠ 这个后台服务是旧版代码：界面上能选的新状态会被它判成非法（比如「预售」会报 form 非法），保存也会被拦住。请到它的终端窗口按 Ctrl+C 停掉，再重新执行
+        <code>node tools/serve.mjs</code>。
+    </div>
+
+    <main class="layout">
+
+        <!-- 左：筛选 -->
+        <aside class="col left">
+            <input id="search" type="search" placeholder="搜型号 / 名称 / 分类">
+
+            <div class="filters" id="statusFilters">
+                <button class="chip active" data-status="all">全部</button>
+                <button class="chip" data-status="normal">正常</button>
+                <button class="chip" data-status="disabled">置灰</button>
+                <button class="chip" data-status="hidden">已下架</button>
+                <button class="chip" data-status="nocat">不在本站画册</button>
+                <button class="chip" data-status="exception">本站有例外</button>
+                <button class="chip" data-status="unassigned">未加入站点</button>
+            </div>
+
+            <div class="group-title">分组与分类</div>
+            <div id="catList" class="cat-list"></div>
+
+            <div class="group-title">统计</div>
+            <div id="stats" class="stats"></div>
+        </aside>
+
+        <!-- 中：产品网格（拖拽排序 / 右键菜单） -->
+        <section class="col center">
+            <div class="batchbar" id="batchbar" hidden>
+                已选 <b id="batchCount">0</b> 项
+                <button data-batch="normal">设为正常</button>
+                <button data-batch="disabled">置灰（可放大）</button>
+                <button data-batch="presale">预售（显示 Pre Sale）</button>
+                <button data-batch="hidden">下架（选款表不出现）</button>
+                <button data-batch="catalog-on">加入本站画册</button>
+                <button data-batch="catalog-off">移出本站画册</button>
+                <button data-batch="clear">取消选择</button>
+            </div>
+            <!-- 站点工作台专用：成员管理入口（产品库视图下隐藏）-->
+            <div class="sitetools" id="sitetools" hidden>
+                <button id="btnAddMembers">＋ 从产品库添加型号到本站</button>
+                <span class="hint" id="membertip"></span>
+            </div>
+            <div class="hint" id="orderHint">拖动卡片可调整顺序（选款表与画册都按这个顺序渲染）；右键卡片出更多操作。</div>
+            <div id="grid" class="grid"></div>
+            <div id="empty" class="empty" hidden>没有符合条件的产品</div>
+        </section>
+
+        <!-- 右：编辑面板 -->
+        <aside class="col right">
+            <div class="tabs">
+                <button class="tab active" data-tab="product">产品</button>
+                <button class="tab" data-tab="site">站点 / 分组</button>
+                <button class="tab" data-tab="log">日志</button>
+            </div>
+
+            <!-- 产品编辑 -->
+            <div class="panel" id="tab-product">
+                <div id="noSel" class="placeholder">点左侧任意产品开始编辑</div>
+                <div id="editor" hidden>
+                    <label>型号 ID<input id="f-id" spellcheck="false"></label>
+                    <div class="err" id="e-id"></div>
+                    <label>显示名称<input id="f-name" spellcheck="false"></label>
+                    <label>分类
+                        <select id="f-cat"></select>
+                    </label>
+                    <label>图片链接
+                        <input id="f-image" spellcheck="false">
+                    </label>
+                    <div class="row-btns">
+                        <button id="btnFillImage" title="按 https://hande.zzydhj.com/hande/<ID>.jpg 生成">按 ID
+                            生成链接</button>
+                        <button id="btnTestImage">测试这张图</button>
+                    </div>
+                    <div class="preview"><img id="previewImg" alt="预览"></div>
+
+                    <!-- 状态与起订量只作用于选款页；画册页不读这两个字段，所以在画册视图
+                         里换成一行说明，不给改了其实不会生效的控件 -->
+                    <div id="state-moq-group">
+                        <div class="group-title" id="state-title">选款表里的状态</div>
+                        <div class="radios" id="f-form">
+                            <!-- 站点视图专用：选它就删掉本站覆盖，回到产品库默认值 -->
+                            <label id="form-inherit"><input type="radio" name="form" value="inherit"><span
+                                    id="form-inherit-text">跟随产品库</span></label>
+                            <label><input type="radio" name="form" value="normal">正常可选</label>
+                            <label><input type="radio" name="form" value="disabled">置灰（图片仍可放大，数量不可填）</label>
+                            <label><input type="radio" name="form" value="presale">预售（数量框不可填，框里显示 Pre Sale）</label>
+                            <label><input type="radio" name="form" value="hidden">下架（选款表完全不出现）</label>
+                        </div>
+
+                        <label><span id="moq-label-text">起订量（留空 = 不限）</span>
+                            <input id="f-moq" type="number" min="1" step="1" placeholder="不限制">
+                        </label>
+                        <div class="err" id="e-moq"></div>
+                    </div>
+                    <div class="hint" id="state-moq-note" hidden>状态与起订量只影响选款页，画册页不读这两项；
+                        要改请到左边选它对应的选款站点。</div>
+
+                    <div id="album-group">
+                        <div class="group-title">本站画册（导出的 PDF）</div>
+                        <label class="switch"><input type="checkbox" id="f-catalog">出现在本站画册里</label>
+                    </div>
+
+                    <div class="group-title">分节注释（生成时还原在该型号上方）</div>
+                    <textarea id="f-notes" rows="2" spellcheck="false"></textarea>
+
+                    <div id="danger-zone">
+                        <div class="group-title">危险操作</div>
+                        <button id="btnRemoveMember" class="danger" hidden
+                            title="只把该型号移出本站名单；产品库里还在，其他站点不受影响">移出本站</button>
+                        <button id="btnDelete" class="danger" hidden
+                            title="从产品库彻底移除这条记录，图片链接会一起丢；只想让某个站不出现请用「移出本站」或「下架」">从产品库删除这个产品</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 站点 / 分组 -->
+            <div class="panel" id="tab-site" hidden>
+                <div id="siteForm"></div>
+            </div>
+
+            <!-- 日志 -->
+            <div class="panel" id="tab-log" hidden>
+                <div class="row-btns">
+                    <button id="btnBackups">备份列表</button>
+                    <span class="hint">每次保存都会留一份，最多 20 份</span>
+                </div>
+                <div id="backupList"></div>
+                <pre id="log" class="log">（还没有操作）</pre>
+            </div>
+        </aside>
+    </main>
+
+    <!-- 从产品库挑型号加入本站：勾选式，带缩略图，不让人手打型号 -->
+    <div class="modal" id="picker" hidden>
+        <div class="modal-box">
+            <div class="modal-head">
+                <b id="picker-title">从产品库添加型号</b>
+                <input id="picker-search" type="search" placeholder="搜型号 / 名称 / 分类">
+                <span class="hint" id="picker-count">已选 0 个</span>
+                <button id="picker-cancel">取消</button>
+                <button id="picker-ok" class="primary">添加到本站</button>
+            </div>
+            <div class="modal-body" id="picker-list"></div>
+        </div>
+    </div>
+
+    <div id="ctx" class="ctx" hidden></div>
+    <div id="toast" class="toast" hidden></div>
+
+    <script src="admin.js"></script>
+</body>
+
+</html>

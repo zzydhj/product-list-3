@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Catalog 2026</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, 'Segoe UI', Arial, sans-serif;
+            background: #e8eaf0;
+            color: #1f2937;
+        }
+
+        /* 工具栏：收起时只剩贴在右窗口边缘的极小半透明半圆，鼠标划到半圆上才弹出完整按钮面板（截整页图时不挡画面） */
+        .toolbar {
+            position: fixed;
+            top: 50%;
+            right: 0;
+            z-index: 999;
+            transform: translateY(-50%);
+        }
+
+        /* 收起态的半圆小把手：极小、半透明、几乎看不到 */
+        .toolbar-tab {
+            width: 10px;
+            height: 34px;
+            border-radius: 10px 0 0 10px;
+            background: #94a3b8;
+            opacity: .18;
+            cursor: pointer;
+            transition: opacity .2s ease;
+        }
+
+        /* 按钮面板：默认隐藏，悬停半圆时滑出 */
+        .toolbar-panel {
+            position: absolute;
+            top: 50%;
+            right: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            transform: translateY(-50%) translateX(14px) scale(.85);
+            transform-origin: right center;
+            opacity: 0;
+            pointer-events: none;
+            transition: transform .22s ease, opacity .22s ease;
+        }
+
+        .toolbar:hover .toolbar-panel,
+        .toolbar:focus-within .toolbar-panel {
+            transform: translateY(-50%) translateX(0) scale(1);
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .toolbar:hover .toolbar-tab {
+            opacity: 0;
+        }
+
+        .toolbar button {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 13px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            transition: transform 0.15s;
+        }
+
+        .toolbar button:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-print {
+            background: #2563eb;
+            color: white;
+        }
+
+        /* 列数切换按钮组 */
+        .cols-group {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+            background: rgba(15, 23, 42, .85);
+            padding: 8px;
+            border-radius: 10px;
+        }
+
+        .cols-group .col-btn {
+            padding: 6px 0;
+            font-size: 12px;
+            box-shadow: none;
+            background: #334155;
+            color: #e2e8f0;
+        }
+
+        .cols-group .col-btn.active {
+            background: #059669;
+            color: white;
+        }
+
+        /* 画册主体 */
+        .catalog {
+            max-width: min(100%, calc(var(--cols, 6) * 175px));
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.15);
+            position: relative;
+            /* 作为水印层的定位参照 */
+        }
+
+        /* 封面（压缩高度版 Banner） */
+        .cover {
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 55%, #1d4ed8 100%);
+            color: white;
+            padding: 26px 48px 22px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cover::before {
+            content: '';
+            position: absolute;
+            top: -60px;
+            right: -60px;
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .cover-label {
+            font-size: 11px;
+            letter-spacing: 5px;
+            opacity: .6;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .cover-title {
+            font-size: 30px;
+            font-weight: 900;
+            line-height: 1.15;
+            margin-bottom: 8px;
+        }
+
+        .cover-title span {
+            color: #fbbf24;
+        }
+
+        .cover-sub {
+            font-size: 13px;
+            opacity: .75;
+            margin-bottom: 0;
+            line-height: 1.6;
+        }
+
+        /* 页眉分组标签已按要求移除（分组多时太占版面） */
+
+        .cover-date {
+            position: absolute;
+            bottom: 10px;
+            right: 48px;
+            font-size: 12px;
+            opacity: .45;
+        }
+
+        /* 目录 */
+        .toc {
+            background: #f8fafc;
+            border-bottom: 2px solid #e2e8f0;
+            padding: 18px 32px;
+        }
+
+        .toc-title {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 3px;
+            color: #94a3b8;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .toc-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .toc-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 5px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .toc-count {
+            background: #dbeafe;
+            color: #1d4ed8;
+            border-radius: 999px;
+            padding: 1px 7px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        /* 分类区块 */
+        .category-section {
+            padding: 0 0 32px;
+        }
+
+        /* 分类标题条 */
+        .cat-header {
+            display: flex;
+            align-items: center;
+            padding: 14px 32px;
+            background: linear-gradient(90deg, #1e3a8a, #3b82f6 60%, #93c5fd);
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .cat-header::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 5px;
+            background: #fbbf24;
+        }
+
+        .cat-name {
+            font-size: 18px;
+            font-weight: 900;
+            color: white;
+            flex: 1;
+            letter-spacing: .5px;
+        }
+
+        .cat-badge {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 999px;
+            padding: 3px 14px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        /* 产品网格（列数/间距/字号由 --cols、--gap、--name-fs 控制，可切 6~16 列） */
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(var(--cols, 6), 1fr);
+            gap: var(--gap, 12px);
+            padding: 0 24px;
+        }
+
+        /* 产品卡片 */
+        .product-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            overflow: hidden;
+            background: white;
+        }
+
+        .img-wrap {
+            aspect-ratio: 1/1;
+            background: #f1f5f9;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .img-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            transition: transform .3s;
+        }
+
+        .product-card:hover .img-wrap img {
+            transform: scale(1.05);
+        }
+
+        .img-placeholder {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            color: #94a3b8;
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+
+        .id-badge {
+            display: none;
+            /* 加上这一行隐藏角标 */
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            background: rgba(15, 23, 42, 0.72);
+            color: white;
+            font-size: 9px;
+            font-weight: 700;
+            padding: 2px 5px;
+            border-radius: 3px;
+            z-index: 2;
+        }
+
+        .product-name {
+            padding: 6px 4px;
+            text-align: center;
+            font-size: var(--name-fs, 11px);
+            font-weight: 700;
+            color: #374151;
+            background: #fafafa;
+            border-top: 1px solid #f0f0f0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* 分隔线 */
+        .section-divider {
+            height: 6px;
+            background: linear-gradient(90deg, #f1f5f9, #e2e8f0, #f1f5f9);
+            margin: 8px 0;
+        }
+
+        /* 页脚 */
+        .catalog-footer {
+            background: #0f172a;
+            color: #64748b;
+            padding: 28px 32px;
+            text-align: center;
+        }
+
+        .catalog-footer strong {
+            color: #e2e8f0;
+            display: block;
+            font-size: 15px;
+            margin-bottom: 6px;
+        }
+
+        .catalog-footer p {
+            font-size: 12px;
+            line-height: 1.8;
+        }
+
+        /* 水印层：由 JS 注入 SVG 平铺背景；不影响交互 */
+        .watermark-layer {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 5;
+            background-repeat: repeat;
+        }
+
+        /* 打印 */
+        @media print {
+            body {
+                background: white;
+            }
+
+            .toolbar {
+                display: none !important;
+            }
+
+            .catalog {
+                box-shadow: none;
+                max-width: 100%;
+            }
+
+            .cat-header,
+            .cover {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .product-card {
+                break-inside: avoid;
+            }
+
+            @page {
+                size: A4;
+                margin: 8mm;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- 工具栏：默认只剩贴右边缘的极小半透明半圆，鼠标划过去才弹出面板；打印时完全隐藏 -->
+    <div class="toolbar">
+        <div class="toolbar-tab"></div>
+        <div class="toolbar-panel">
+            <button class="btn-print" onclick="window.print()">🖨️ 打印 / 存PDF</button>
+            <div class="cols-group">
+                <button class="col-btn" data-cols="6" onclick="setCols(6)">6列</button>
+                <button class="col-btn" data-cols="8" onclick="setCols(8)">8列</button>
+                <button class="col-btn" data-cols="10" onclick="setCols(10)">10列</button>
+                <button class="col-btn" data-cols="12" onclick="setCols(12)">12列</button>
+                <button class="col-btn" data-cols="14" onclick="setCols(14)">14列</button>
+                <button class="col-btn" data-cols="16" onclick="setCols(16)">16列</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="catalog" id="catalog-root">
+
+        <!-- 水印层：文字/透明度/角度等在下方 WATERMARK_CONFIG 中修改 -->
+        <div class="watermark-layer" aria-hidden="true"></div>
+
+        <!-- 封面 -->
+        <div class="cover">
+            <div class="cover-label">Product Catalog · 2026 Edition</div>
+            <div class="cover-title">Card Holder Series<br><span>Full Collection</span></div>
+            <div class="cover-sub">PSA · BGS · ACE · CGC · TAG Series<br>Grading Slab Protection · Silicone Bumper ·
+                Aluminum Bumper · Acrylic display box · Card Binder</div>
+            <div class="cover-date" id="cover-date"></div>
+        </div>
+
+        <!-- 目录 -->
+
+        <div class="toc" style="display:none">
+            <div class="toc-title">📋 Contents</div>
+            <div class="toc-list" id="toc-list"></div>
+        </div>
+
+        <!-- 产品内容 -->
+        <div id="catalog-body"></div>
+
+        <!-- 页脚 -->
+        <div class="catalog-footer">
+            <strong>Thank you for browsing our collection!</strong>
+            <p>For orders and inquiries, please contact your sales representative.<br>
+                All products are subject to availability.</p>
+            <p style="margin-top:10px;font-size:11px;opacity:.5;"> <span id="footer-date"></span></p>
+        </div>
+    </div>
+
+    <script>
+        // ================= 水印配置区（改这里即可） =================
+        // 屏幕平铺水印，用于防截图盗用。所有可调项集中在此对象。
+        const WATERMARK_CONFIG = {
+            enabled: true,                          // 一键开关：false = 不显示水印
+            text: 'Foamgrid',           // 水印文字（英文通用字样）
+            color: '#777777',                       // 白色：产品图为黑底，白字在黑底/深色区最清晰
+            opacity: 0.3,                          // 当前 0.5 为调试高值；确认能显示后建议调到 0.15 ~ 0.25
+            fontSize: 15,                           // 字号（px）
+            fontWeight: 600,                        // 加粗：低透明度下仍清晰可辨
+            angle: -28,                             // 斜向角度（度），负值 = 左上到右下
+            tileWidth: 240,                         // 平铺单元宽度（px）
+            tileHeight: 150,                        // 平铺单元高度（px）
+            fontFamily: 'Arial, "Helvetica Neue", sans-serif',
+        };
+
+        (function applyWatermark(cfg) {
+            const layer = document.querySelector('.watermark-layer');
+            if (!layer) return;
+            if (!cfg.enabled) { layer.style.display = 'none'; return; }
+            // 转义 XML 特殊字符，防止改文字时打破 SVG
+            const safeText = String(cfg.text)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            // 字体名里的引号必须转义，否则会截断 SVG 的 font-family 属性导致整张图失效
+            const safeFont = String(cfg.fontFamily)
+                .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            const cx = cfg.tileWidth / 2, cy = cfg.tileHeight / 2;
+            const svg =
+                `<svg xmlns="http://www.w3.org/2000/svg" width="${cfg.tileWidth}" height="${cfg.tileHeight}">` +
+                `<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="middle" ` +
+                `transform="rotate(${cfg.angle} ${cx} ${cy})" ` +
+                `fill="${cfg.color}" fill-opacity="${cfg.opacity}" ` +
+                `font-family="${safeFont}" font-size="${cfg.fontSize}" font-weight="${cfg.fontWeight}">` +
+                safeText +
+                `</text>` +
+                `</svg>`;
+            layer.style.backgroundImage =
+                `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}")`;
+        })(WATERMARK_CONFIG);
+
+        // ================= 配置区域 =================
+        // ⚠️ 请在此处粘贴您完整的 products 数组替换下面的示例数据
+        const products = [
+            // PSA With back panel
+
+            { id: 'HY029-D', category: 'PSA Back Single Panel', name: 'HY029-D', image: 'https://hande.zzydhj.com/hande/HY029-D.jpg' },
+            { id: 'HY036-D', category: 'PSA Back Single Panel', name: 'HY036-D', image: 'https://hande.zzydhj.com/hande/HY036-D.jpg' },
+            { id: 'HY045-D', category: 'PSA Back Single Panel', name: 'HY045-D', image: 'https://hande.zzydhj.com/hande/HY045-D.jpg' },
+            { id: 'HY046-D', category: 'PSA Back Single Panel', name: 'HY046-D', image: 'https://hande.zzydhj.com/hande/HY046-D.jpg' },
+            { id: 'HY050-D', category: 'PSA Back Single Panel', name: 'HY050-D', image: 'https://hande.zzydhj.com/hande/HY050-D.jpg' },
+            { id: 'HY053-D', category: 'PSA Back Single Panel', name: 'HY053-D', image: 'https://hande.zzydhj.com/hande/HY053-D.jpg' },
+            { id: 'HY064-D', category: 'PSA Back Single Panel', name: 'HY064-D', image: 'https://hande.zzydhj.com/hande/HY064-D.jpg' },
+            { id: 'HY066-D', category: 'PSA Back Single Panel', name: 'HY066-D', image: 'https://hande.zzydhj.com/hande/HY066-D.jpg' },
+            { id: 'HY071-D', category: 'PSA Back Single Panel', name: 'HY071-D', image: 'https://hande.zzydhj.com/hande/HY071-D.jpg' },
+            { id: 'HY001-D', category: 'PSA Back Single Panel', name: 'HY001-D', image: 'https://hande.zzydhj.com/hande/HY001-D.jpg' },
+            { id: 'HY002-D', category: 'PSA Back Single Panel', name: 'HY002-D', image: 'https://hande.zzydhj.com/hande/HY002-D.jpg' },
+            { id: 'HY005-D', category: 'PSA Back Single Panel', name: 'HY005-D', image: 'https://hande.zzydhj.com/hande/HY005-D.jpg' },
+            { id: 'HY006-D', category: 'PSA Back Single Panel', name: 'HY006-D', image: 'https://hande.zzydhj.com/hande/HY006-D.jpg' },
+            { id: 'HY013-D', category: 'PSA Back Single Panel', name: 'HY013-D', image: 'https://hande.zzydhj.com/hande/HY013-D.jpg' },
+            { id: 'HY021-D', category: 'PSA Back Single Panel', name: 'HY021-D', image: 'https://hande.zzydhj.com/hande/HY021-D.jpg' },
+            { id: 'HY023-D', category: 'PSA Back Single Panel', name: 'HY023-D', image: 'https://hande.zzydhj.com/hande/HY023-D.jpg' },
+            { id: 'HY025-D', category: 'PSA Back Single Panel', name: 'HY025-D', image: 'https://hande.zzydhj.com/hande/HY025-D.jpg' },
+            { id: 'HY026-D', category: 'PSA Back Single Panel', name: 'HY026-D', image: 'https://hande.zzydhj.com/hande/HY026-D.jpg' },
+            { id: 'Deep HY026-D', category: 'PSA Back Single Panel', name: 'Deep HY026-D', image: 'https://hande.zzydhj.com/hande/Deep_HY026-D.png' },
+            { id: 'HY027-D', category: 'PSA Back Single Panel', name: 'HY027-D', image: 'https://hande.zzydhj.com/hande/HY027-D.jpg' },
+            { id: 'HY028-D', category: 'PSA Back Single Panel', name: 'HY028-D', image: 'https://hande.zzydhj.com/hande/HY028-D.jpg' },
+            { id: 'HY030-D', category: 'PSA Back Single Panel', name: 'HY030-D', image: 'https://hande.zzydhj.com/hande/HY030-D.jpg' },
+            { id: 'HY031-D', category: 'PSA Back Single Panel', name: 'HY031-D', image: 'https://hande.zzydhj.com/hande/HY031-D.jpg' },
+            { id: 'HY032-D', category: 'PSA Back Single Panel', name: 'HY032-D', image: 'https://hande.zzydhj.com/hande/HY032-D.jpg' },
+            { id: 'HY033-D', category: 'PSA Back Single Panel', name: 'HY033-D', image: 'https://hande.zzydhj.com/hande/HY033-D.jpg' },
+            { id: 'HY034-D', category: 'PSA Back Single Panel', name: 'HY034-D', image: 'https://hande.zzydhj.com/hande/HY034-D.jpg' },
+            { id: 'HY035-D', category: 'PSA Back Single Panel', name: 'HY035-D', image: 'https://hande.zzydhj.com/hande/HY035-D.jpg' },
+            { id: 'HY037-D', category: 'PSA Back Single Panel', name: 'HY037-D', image: 'https://hande.zzydhj.com/hande/HY037-D.jpg' },
+            { id: 'HY038-D', category: 'PSA Back Single Panel', name: 'HY038-D', image: 'https://hande.zzydhj.com/hande/HY038-D.jpg' },
+            { id: 'HY048-D', category: 'PSA Back Single Panel', name: 'HY048-D', image: 'https://hande.zzydhj.com/hande/HY048-D.jpg' },
+            { id: 'HY049-D', category: 'PSA Back Single Panel', name: 'HY049-D', image: 'https://hande.zzydhj.com/hande/HY049-D.jpg' },
+            { id: 'HY051-D', category: 'PSA Back Single Panel', name: 'HY051-D', image: 'https://hande.zzydhj.com/hande/HY051-D.jpg' },
+            { id: 'HY052-D', category: 'PSA Back Single Panel', name: 'HY052-D', image: 'https://hande.zzydhj.com/hande/HY052-D.jpg' },
+            { id: 'HY054-D', category: 'PSA Back Single Panel', name: 'HY054-D', image: 'https://hande.zzydhj.com/hande/HY054-D.jpg' },
+            { id: 'HY056-D', category: 'PSA Back Single Panel', name: 'HY056-D', image: 'https://hande.zzydhj.com/hande/HY056-D.jpg' },
+            { id: 'HY057-D', category: 'PSA Back Single Panel', name: 'HY057-D', image: 'https://hande.zzydhj.com/hande/HY057-D.jpg' },
+            { id: 'HY058-D', category: 'PSA Back Single Panel', name: 'HY058-D', image: 'https://hande.zzydhj.com/hande/HY058-D.jpg' },
+            { id: 'HY059-D', category: 'PSA Back Single Panel', name: 'HY059-D', image: 'https://hande.zzydhj.com/hande/HY059-D.jpg' },
+            { id: 'HY060-D', category: 'PSA Back Single Panel', name: 'HY060-D', image: 'https://hande.zzydhj.com/hande/HY060-D.jpg' },
+            { id: 'HY061-D', category: 'PSA Back Single Panel', name: 'HY061-D', image: 'https://hande.zzydhj.com/hande/HY061-D.jpg' },
+            { id: 'HY062-D', category: 'PSA Back Single Panel', name: 'HY062-D', image: 'https://hande.zzydhj.com/hande/HY062-D.jpg' },
+            { id: 'HY063-D', category: 'PSA Back Single Panel', name: 'HY063-D', image: 'https://hande.zzydhj.com/hande/HY063-D.jpg' },
+            { id: 'HY065-D', category: 'PSA Back Single Panel', name: 'HY065-D', image: 'https://hande.zzydhj.com/hande/HY065-D.png' },
+            { id: 'HY067-D', category: 'PSA Back Single Panel', name: 'HY067-D', image: 'https://hande.zzydhj.com/hande/HY067-D.jpg' },
+            { id: 'HY068-D', category: 'PSA Back Single Panel', name: 'HY068-D', image: 'https://hande.zzydhj.com/hande/HY068-D.jpg' },
+            { id: 'HY069-D', category: 'PSA Back Single Panel', name: 'HY069-D', image: 'https://hande.zzydhj.com/hande/HY069-D.jpg' },
+            { id: 'HY070-D', category: 'PSA Back Single Panel', name: 'HY070-D', image: 'https://hande.zzydhj.com/hande/HY070-D.jpg' },
+            { id: 'HY072-D', category: 'PSA Back Single Panel', name: 'HY072-D', image: 'https://hande.zzydhj.com/hande/HY072-D.jpg' },
+
+
+            { id: 'HY073-D', category: 'PSA Single Panel No Glitter', name: 'HY073-D', image: 'https://hande.zzydhj.com/hande/HY073-D.jpg' },
+            { id: 'HY074-D', category: 'PSA Single Panel No Glitter', name: 'HY074-D', image: 'https://hande.zzydhj.com/hande/HY074-D.jpg' },
+            { id: 'HY075-D', category: 'PSA Single Panel No Glitter', name: 'HY075-D', image: 'https://hande.zzydhj.com/hande/HY075-D.jpg' },
+            { id: 'HY076-D', category: 'PSA Single Panel No Glitter', name: 'HY076-D', image: 'https://hande.zzydhj.com/hande/HY076-D.jpg' },
+            { id: 'HY077-D', category: 'PSA Single Panel No Glitter', name: 'HY077-D', image: 'https://hande.zzydhj.com/hande/HY077-D.jpg' },
+
+
+
+
+
+            { id: 'PSAD-029', category: 'PSA with Double panels', name: 'PSAD-029', image: 'https://hande.zzydhj.com/hande/PSAD-029.jpg' },
+            { id: 'PSAD-036', category: 'PSA with Double panels', name: 'PSAD-036', image: 'https://hande.zzydhj.com/hande/PSAD-036.jpg' },
+            { id: 'PSAD-045A', category: 'PSA with Double panels', name: 'PSAD-045A', image: 'https://hande.zzydhj.com/hande/PSAD-045A.jpg' },
+            { id: 'PSAD-046A', category: 'PSA with Double panels', name: 'PSAD-046A', image: 'https://hande.zzydhj.com/hande/PSAD-046A.jpg' },
+            { id: 'PSAD-050A', category: 'PSA with Double panels', name: 'PSAD-050A', image: 'https://hande.zzydhj.com/hande/PSAD-050A.jpg' },
+            { id: 'PSAD-053', category: 'PSA with Double panels', name: 'PSAD-053', image: 'https://hande.zzydhj.com/hande/PSAD-053.jpg' },
+            { id: 'PSAD-066', category: 'PSA with Double panels', name: 'PSAD-066', image: 'https://hande.zzydhj.com/hande/PSAD-066.jpg' },
+            { id: 'PSAD-067', category: 'PSA with Double panels', name: 'PSAD-067', image: 'https://hande.zzydhj.com/hande/PSAD-067.jpg' },
+            { id: 'PSAD-068', category: 'PSA with Double panels', name: 'PSAD-068', image: 'https://hande.zzydhj.com/hande/PSAD-068.jpg' },
+            { id: 'PSAD-069', category: 'PSA with Double panels', name: 'PSAD-069', image: 'https://hande.zzydhj.com/hande/PSAD-069.jpg' },
+            { id: 'PSAD-070', category: 'PSA with Double panels', name: 'PSAD-070', image: 'https://hande.zzydhj.com/hande/PSAD-070.jpg' },
+
+
+            { id: 'PSAD-002', category: 'PSA with Double panels', name: 'PSAD-002', image: 'https://hande.zzydhj.com/hande/PSAD-002.jpg' },
+            { id: 'PSAD-005', category: 'PSA with Double panels', name: 'PSAD-005', image: 'https://hande.zzydhj.com/hande/PSAD-005.jpg' },
+            { id: 'PSAD-021', category: 'PSA with Double panels', name: 'PSAD-021', image: 'https://hande.zzydhj.com/hande/PSAD-021.jpg' },
+            { id: 'PSAD-026', category: 'PSA with Double panels', name: 'PSAD-026', image: 'https://hande.zzydhj.com/hande/PSAD-026.jpg' },
+            { id: 'PSAD-027', category: 'PSA with Double panels', name: 'PSAD-027', image: 'https://hande.zzydhj.com/hande/PSAD-027.jpg' },
+            { id: 'PSAD-031', category: 'PSA with Double panels', name: 'PSAD-031', image: 'https://hande.zzydhj.com/hande/PSAD-031.jpg' },
+            { id: 'PSAD-033', category: 'PSA with Double panels', name: 'PSAD-033', image: 'https://hande.zzydhj.com/hande/PSAD-033.jpg' },
+            { id: 'PSAD-048', category: 'PSA with Double panels', name: 'PSAD-048', image: 'https://hande.zzydhj.com/hande/PSAD-048.jpg' },
+            { id: 'PSAD-049', category: 'PSA with Double panels', name: 'PSAD-049', image: 'https://hande.zzydhj.com/hande/PSAD-049.jpg' },
+            { id: 'PSAD-054', category: 'PSA with Double panels', name: 'PSAD-054', image: 'https://hande.zzydhj.com/hande/PSAD-054.jpg' },
+            { id: 'PSAD-056', category: 'PSA with Double panels', name: 'PSAD-056', image: 'https://hande.zzydhj.com/hande/PSAD-056.jpg' },
+
+
+                        { id: 'PSAD-071', category: 'PSA Magnetic Double Panels', name: 'PSAD-071', image: 'https://hande.zzydhj.com/hande/PSAD-071.jpg' },
+            { id: 'PSAD-072', category: 'PSA Magnetic Double Panels', name: 'PSAD-072', image: 'https://hande.zzydhj.com/hande/PSAD-072.jpg' },
+            { id: 'PSAD-073', category: 'PSA Magnetic Double Panels', name: 'PSAD-073', image: 'https://hande.zzydhj.com/hande/PSAD-073.jpg' },
+            { id: 'PSAD-074', category: 'PSA Magnetic Double Panels', name: 'PSAD-074', image: 'https://hande.zzydhj.com/hande/PSAD-074.jpg' },
+
+            { id: 'HY001', category: 'PSA no Plate', name: 'HY001', image: 'https://hande.zzydhj.com/hande/HY001.jpg' },
+            { id: 'HY002', category: 'PSA no Plate', name: 'HY002', image: 'https://hande.zzydhj.com/hande/HY002.jpg' },
+            { id: 'HY004', category: 'PSA no Plate', name: 'HY004', image: 'https://hande.zzydhj.com/hande/HY004.jpg' },
+            { id: 'HY005', category: 'PSA no Plate', name: 'HY005', image: 'https://hande.zzydhj.com/hande/HY005.jpg' },
+            { id: 'HY006', category: 'PSA no Plate', name: 'HY006', image: 'https://hande.zzydhj.com/hande/HY006.jpg' },
+            { id: 'HY007', category: 'PSA no Plate', name: 'HY007', image: 'https://hande.zzydhj.com/hande/HY007.jpg' },
+            { id: 'HY008', category: 'PSA no Plate', name: 'HY008', image: 'https://hande.zzydhj.com/hande/HY008.jpg' },
+            { id: 'HY009', category: 'PSA no Plate', name: 'HY009', image: 'https://hande.zzydhj.com/hande/HY009.jpg' },
+            { id: 'HY010', category: 'PSA no Plate', name: 'HY010', image: 'https://hande.zzydhj.com/hande/HY010.jpg' },
+            { id: 'HY011', category: 'PSA no Plate', name: 'HY011', image: 'https://hande.zzydhj.com/hande/HY011.jpg' },
+            { id: 'HY012', category: 'PSA no Plate', name: 'HY012', image: 'https://hande.zzydhj.com/hande/HY012.jpg' },
+            { id: 'HY013', category: 'PSA no Plate', name: 'HY013', image: 'https://hande.zzydhj.com/hande/HY013.jpg' },
+            { id: 'HY014', category: 'PSA no Plate', name: 'HY014', image: 'https://hande.zzydhj.com/hande/HY014.jpg' },
+            { id: 'HY015', category: 'PSA no Plate', name: 'HY015', image: 'https://hande.zzydhj.com/hande/HY015.jpg' },
+            { id: 'HY017', category: 'PSA no Plate', name: 'HY017', image: 'https://hande.zzydhj.com/hande/HY017.jpg' },
+            { id: 'HY018', category: 'PSA no Plate', name: 'HY018', image: 'https://hande.zzydhj.com/hande/HY018.jpg' },
+            { id: 'HY020', category: 'PSA no Plate', name: 'HY020', image: 'https://hande.zzydhj.com/hande/HY020.jpg' },
+            { id: 'HY021', category: 'PSA no Plate', name: 'HY021', image: 'https://hande.zzydhj.com/hande/HY021.jpg' },
+            { id: 'HY022', category: 'PSA no Plate', name: 'HY022', image: 'https://hande.zzydhj.com/hande/HY022.jpg' },
+            { id: 'HY023', category: 'PSA no Plate', name: 'HY023', image: 'https://hande.zzydhj.com/hande/HY023.jpg' },
+            { id: 'HY026', category: 'PSA no Plate', name: 'HY026', image: 'https://hande.zzydhj.com/hande/HY026.jpg' },
+            { id: 'HY027', category: 'PSA no Plate', name: 'HY027', image: 'https://hande.zzydhj.com/hande/HY027.jpg' },
+            { id: 'HY028', category: 'PSA no Plate', name: 'HY028', image: 'https://hande.zzydhj.com/hande/HY028.jpg' },
+            { id: 'HY029', category: 'PSA no Plate', name: 'HY029', image: 'https://hande.zzydhj.com/hande/HY029.jpg' },
+            { id: 'HY030', category: 'PSA no Plate', name: 'HY030', image: 'https://hande.zzydhj.com/hande/HY030.jpg' },
+            { id: 'HY031', category: 'PSA no Plate', name: 'HY031', image: 'https://hande.zzydhj.com/hande/HY031.jpg' },
+            { id: 'HY033', category: 'PSA no Plate', name: 'HY033', image: 'https://hande.zzydhj.com/hande/HY033.jpg' },
+            { id: 'HY034', category: 'PSA no Plate', name: 'HY034', image: 'https://hande.zzydhj.com/hande/HY034.jpg' },
+            { id: 'HY035', category: 'PSA no Plate', name: 'HY035', image: 'https://hande.zzydhj.com/hande/HY035.jpg' },
+            { id: 'TPU-9017', category: 'PSA no Plate', name: 'TPU-9017', image: 'https://hande.zzydhj.com/hande/TPU-9017.jpg' },
+            { id: 'TPU-9010', category: 'PSA no Plate', name: 'TPU-9010', image: 'https://hande.zzydhj.com/hande/TPU-9010.jpg' },
+            { id: 'TPU-5017', category: 'PSA no Plate', name: 'TPU-5017', image: 'https://hande.zzydhj.com/hande/TPU-5017.jpg' },
+            { id: 'TPU-4007', category: 'PSA no Plate', name: 'TPU-4007', image: 'https://hande.zzydhj.com/hande/TPU-4007.jpg' },
+            { id: 'TPU-1023', category: 'PSA no Plate', name: 'TPU-1023', image: 'https://hande.zzydhj.com/hande/TPU-1023.jpg' },
+            { id: 'TPU-9018', category: 'PSA no Plate', name: 'TPU-9018', image: 'https://hande.zzydhj.com/hande/TPU-9018.jpg' },
+            { id: 'TPU-2083C', category: 'PSA no Plate', name: 'TPU-2083C', image: 'https://hande.zzydhj.com/hande/TPU-2083C.jpg' },
+            { id: 'TPU-6025', category: 'PSA no Plate', name: 'TPU-6025', image: 'https://hande.zzydhj.com/hande/TPU-6025.jpg' },
+            { id: 'TPU-2685', category: 'PSA no Plate', name: 'TPU-2685', image: 'https://hande.zzydhj.com/hande/TPU-2685.jpg' },
+            { id: 'TPU-286', category: 'PSA no Plate', name: 'TPU-286', image: 'https://hande.zzydhj.com/hande/TPU-286.jpg' },
+            { id: 'TPU-2009', category: 'PSA no Plate', name: 'TPU-2009', image: 'https://hande.zzydhj.com/hande/TPU-2009.jpg' },
+            { id: 'TPU-185', category: 'PSA no Plate', name: 'TPU-185', image: 'https://hande.zzydhj.com/hande/TPU-185.jpg' },
+
+            { id: 'BGS002-D', category: 'BGS with panel', name: 'BGS002-D', image: 'https://hande.zzydhj.com/hande/BGS002-D.jpg' },
+            { id: 'BGS005-D', category: 'BGS with panel', name: 'BGS005-D', image: 'https://hande.zzydhj.com/hande/BGS005-D.jpg' },
+            { id: 'BGS021-D', category: 'BGS with panel', name: 'BGS021-D', image: 'https://hande.zzydhj.com/hande/BGS021-D.jpg' },
+            { id: 'BGS026-D', category: 'BGS with panel', name: 'BGS026-D', image: 'https://hande.zzydhj.com/hande/BGS026-D.jpg' },
+            { id: 'BGS027-D', category: 'BGS with panel', name: 'BGS027-D', image: 'https://hande.zzydhj.com/hande/BGS027-D.jpg' },
+            { id: 'BGS029-D', category: 'BGS with panel', name: 'BGS029-D', image: 'https://hande.zzydhj.com/hande/BGS029-D.jpg' },
+            { id: 'BGS031-D', category: 'BGS with panel', name: 'BGS031-D', image: 'https://hande.zzydhj.com/hande/BGS031-D.jpg' },
+            { id: 'BGS033-D', category: 'BGS with panel', name: 'BGS033-D', image: 'https://hande.zzydhj.com/hande/BGS033-D.jpg' },
+            { id: 'BGS036-D', category: 'BGS with panel', name: 'BGS036-D', image: 'https://hande.zzydhj.com/hande/BGS036-D.jpg' },
+            { id: 'BGS048-D', category: 'BGS with panel', name: 'BGS048-D', image: 'https://hande.zzydhj.com/hande/BGS048-D.jpg' },
+            { id: 'BGS049-D', category: 'BGS with panel', name: 'BGS049-D', image: 'https://hande.zzydhj.com/hande/BGS049-D.jpg' },
+            { id: 'BGS053-D', category: 'BGS with panel', name: 'BGS053-D', image: 'https://hande.zzydhj.com/hande/BGS053-D.jpg' },
+            { id: 'BGS054-D', category: 'BGS with panel', name: 'BGS054-D', image: 'https://hande.zzydhj.com/hande/BGS054-D.jpg' },
+            { id: 'BGS056-D', category: 'BGS with panel', name: 'BGS056-D', image: 'https://hande.zzydhj.com/hande/BGS056-D.jpg' },
+
+            { id: 'BGS073-D', category: 'BGS Single Panel No Glitter', name: 'BGS073-D', image: 'https://hande.zzydhj.com/hande/HY073-D.jpg' },
+            { id: 'BGS074-D', category: 'BGS Single Panel No Glitter', name: 'BGS074-D', image: 'https://hande.zzydhj.com/hande/HY074-D.jpg' },
+            { id: 'BGS075-D', category: 'BGS Single Panel No Glitter', name: 'BGS075-D', image: 'https://hande.zzydhj.com/hande/HY075-D.jpg' },
+            { id: 'BGS076-D', category: 'BGS Single Panel No Glitter', name: 'BGS076-D', image: 'https://hande.zzydhj.com/hande/HY076-D.jpg' },
+            { id: 'BGS077-D', category: 'BGS Single Panel No Glitter', name: 'BGS077-D', image: 'https://hande.zzydhj.com/hande/HY077-D.jpg' },
+
+
+            { id: 'ACE002-D', category: 'ACE with panel', name: 'ACE002-D', image: 'https://hande.zzydhj.com/hande/ACE002-D.jpg' },
+            { id: 'ACE005-D', category: 'ACE with panel', name: 'ACE005-D', image: 'https://hande.zzydhj.com/hande/ACE005-D.jpg' },
+            { id: 'ACE021-D', category: 'ACE with panel', name: 'ACE021-D', image: 'https://hande.zzydhj.com/hande/ACE021-D.jpg' },
+            { id: 'ACE026-D', category: 'ACE with panel', name: 'ACE026-D', image: 'https://hande.zzydhj.com/hande/ACE026-D.jpg' },
+            { id: 'ACE027-D', category: 'ACE with panel', name: 'ACE027-D', image: 'https://hande.zzydhj.com/hande/ACE027-D.jpg' },
+            { id: 'ACE029-D', category: 'ACE with panel', name: 'ACE029-D', image: 'https://hande.zzydhj.com/hande/ACE029-D.jpg' },
+            { id: 'ACE031-D', category: 'ACE with panel', name: 'ACE031-D', image: 'https://hande.zzydhj.com/hande/ACE031-D.jpg' },
+            { id: 'ACE033-D', category: 'ACE with panel', name: 'ACE033-D', image: 'https://hande.zzydhj.com/hande/ACE033-D.jpg' },
+            { id: 'ACE048-D', category: 'ACE with panel', name: 'ACE048-D', image: 'https://hande.zzydhj.com/hande/ACE048-D.jpg' },
+            { id: 'ACE049-D', category: 'ACE with panel', name: 'ACE049-D', image: 'https://hande.zzydhj.com/hande/ACE049-D.jpg' },
+            { id: 'ACE054-D', category: 'ACE with panel', name: 'ACE054-D', image: 'https://hande.zzydhj.com/hande/ACE054-D.jpg' },
+
+            { id: 'CGC002-D', category: 'CGC with panel', name: 'CGC002-D', image: 'https://hande.zzydhj.com/hande/CGC002-D.jpg' },
+            { id: 'CGC005-D', category: 'CGC with panel', name: 'CGC005-D', image: 'https://hande.zzydhj.com/hande/CGC005-D.jpg' },
+            { id: 'CGC021-D', category: 'CGC with panel', name: 'CGC021-D', image: 'https://hande.zzydhj.com/hande/CGC021-D.jpg' },
+            { id: 'CGC026-D', category: 'CGC with panel', name: 'CGC026-D', image: 'https://hande.zzydhj.com/hande/CGC026-D.jpg' },
+            { id: 'CGC027-D', category: 'CGC with panel', name: 'CGC027-D', image: 'https://hande.zzydhj.com/hande/CGC027-D.jpg' },
+            { id: 'CGC029-D', category: 'CGC with panel', name: 'CGC029-D', image: 'https://hande.zzydhj.com/hande/CGC029-D.jpg' },
+            { id: 'CGC031-D', category: 'CGC with panel', name: 'CGC031-D', image: 'https://hande.zzydhj.com/hande/CGC031-D.jpg' },
+            { id: 'CGC033-D', category: 'CGC with panel', name: 'CGC033-D', image: 'https://hande.zzydhj.com/hande/CGC033-D.jpg' },
+            { id: 'CGC048-D', category: 'CGC with panel', name: 'CGC048-D', image: 'https://hande.zzydhj.com/hande/CGC048-D.jpg' },
+            { id: 'CGC049-D', category: 'CGC with panel', name: 'CGC049-D', image: 'https://hande.zzydhj.com/hande/CGC049-D.jpg' },
+            { id: 'CGC053-D', category: 'CGC with panel', name: 'CGC053-D', image: 'https://hande.zzydhj.com/hande/CGC053-D.jpg' },
+            { id: 'CGC054-D', category: 'CGC with panel', name: 'CGC054-D', image: 'https://hande.zzydhj.com/hande/CGC054-D.jpg' },
+
+            { id: 'TAG002-D', category: 'TAG with panel', name: 'TAG002-D', image: 'https://hande.zzydhj.com/hande/TAG002-D.jpg' },
+            { id: 'TAG005-D', category: 'TAG with panel', name: 'TAG005-D', image: 'https://hande.zzydhj.com/hande/TAG005-D.jpg' },
+            { id: 'TAG021-D', category: 'TAG with panel', name: 'TAG021-D', image: 'https://hande.zzydhj.com/hande/TAG021-D.jpg' },
+            { id: 'TAG026-D', category: 'TAG with panel', name: 'TAG026-D', image: 'https://hande.zzydhj.com/hande/TAG026-D.jpg' },
+            { id: 'TAG027-D', category: 'TAG with panel', name: 'TAG027-D', image: 'https://hande.zzydhj.com/hande/TAG027-D.jpg' },
+            { id: 'TAG029-D', category: 'TAG with panel', name: 'TAG029-D', image: 'https://hande.zzydhj.com/hande/TAG029-D.jpg' },
+            { id: 'TAG031-D', category: 'TAG with panel', name: 'TAG031-D', image: 'https://hande.zzydhj.com/hande/TAG031-D.jpg' },
+            { id: 'TAG033-D', category: 'TAG with panel', name: 'TAG033-D', image: 'https://hande.zzydhj.com/hande/TAG033-D.jpg' },
+            { id: 'TAG048-D', category: 'TAG with panel', name: 'TAG048-D', image: 'https://hande.zzydhj.com/hande/TAG048-D.jpg' },
+            { id: 'TAG049-D', category: 'TAG with panel', name: 'TAG049-D', image: 'https://hande.zzydhj.com/hande/TAG049-D.jpg' },
+            { id: 'TAG053-D', category: 'TAG with panel', name: 'TAG053-D', image: 'https://hande.zzydhj.com/hande/TAG053-D.jpg' },
+            { id: 'TAG054-D', category: 'TAG with panel', name: 'TAG054-D', image: 'https://hande.zzydhj.com/hande/TAG054-D.jpg' },
+
+            { id: 'TAG073-D', category: 'TAG Single Panel No Glitter', name: 'TAG073-D', image: 'https://hande.zzydhj.com/hande/HY073-D.jpg' },
+            { id: 'TAG074-D', category: 'TAG Single Panel No Glitter', name: 'TAG074-D', image: 'https://hande.zzydhj.com/hande/HY074-D.jpg' },
+            { id: 'TAG075-D', category: 'TAG Single Panel No Glitter', name: 'TAG075-D', image: 'https://hande.zzydhj.com/hande/HY075-D.jpg' },
+            { id: 'TAG076-D', category: 'TAG Single Panel No Glitter', name: 'TAG076-D', image: 'https://hande.zzydhj.com/hande/HY076-D.jpg' },
+            { id: 'TAG077-D', category: 'TAG Single Panel No Glitter', name: 'TAG077-D', image: 'https://hande.zzydhj.com/hande/HY077-D.jpg' },
+
+
+
+            { id: 'Purple-2685', category: 'PSA Silicone Bumper', name: 'Purple-2685', image: 'https://hande.zzydhj.com/hande/Purple-2685.jpg' },
+            { id: 'Brown-2009', category: 'PSA Silicone Bumper', name: 'Brown-2009', image: 'https://hande.zzydhj.com/hande/Brown-2009.jpg' },
+            { id: 'Yellow-1023', category: 'PSA Silicone Bumper', name: 'Yellow-1023', image: 'https://hande.zzydhj.com/hande/Yellow-1023.jpg' },
+            { id: 'Pink-304', category: 'PSA Silicone Bumper', name: 'Pink-304', image: 'https://hande.zzydhj.com/hande/Pink-304.jpg' },
+            { id: 'Blue-286', category: 'PSA Silicone Bumper', name: 'Blue-286', image: 'https://hande.zzydhj.com/hande/Blue-286.jpg' },
+            { id: 'Red-185', category: 'PSA Silicone Bumper', name: 'Red-185', image: 'https://hande.zzydhj.com/hande/Red-185.jpg' },
+            { id: 'Clear', category: 'PSA Silicone Bumper', name: 'Clear', image: 'https://hande.zzydhj.com/hande/Clear.jpg' },
+            { id: 'White-9010', category: 'PSA Silicone Bumper', name: 'White-9010', image: 'https://hande.zzydhj.com/hande/White-9010.jpg' },
+            { id: 'Green-6024', category: 'PSA Silicone Bumper', name: 'Green-6024', image: 'https://hande.zzydhj.com/hande/Green-6024.jpg' },
+            { id: 'Blue-2017', category: 'PSA Silicone Bumper', name: 'Blue-2017', image: 'https://hande.zzydhj.com/hande/Blue-2017.jpg' },
+            { id: 'Rose-Red-4006', category: 'PSA Silicone Bumper', name: 'Rose-Red-4006', image: 'https://hande.zzydhj.com/hande/Rose-Red-4006.jpg' },
+            { id: 'Red-3020', category: 'PSA Silicone Bumper', name: 'Red-3020', image: 'https://hande.zzydhj.com/hande/Red-3020.jpg' },
+            { id: 'Black-9017', category: 'PSA Silicone Bumper', name: 'Black-9017', image: 'https://hande.zzydhj.com/hande/Black-9017.jpg' },
+            { id: 'Green-2083C', category: 'PSA Silicone Bumper', name: 'Green-2083C', image: 'https://hande.zzydhj.com/hande/Green-2083C.jpg' },
+            { id: 'Light-Pink-515C', category: 'PSA Silicone Bumper', name: 'Light-Pink-515C', image: 'https://hande.zzydhj.com/hande/Light-Pink-515C.jpg' },
+
+            { id: 'BGS-Purple-2685', category: 'BGS Silicone Bumper', name: 'BGS-Purple-2685', image: 'https://hande.zzydhj.com/hande/BGS-Purple-2685.jpg' },
+            { id: 'BGS-Brown-2009', category: 'BGS Silicone Bumper', name: 'BGS-Brown-2009', image: 'https://hande.zzydhj.com/hande/BGS-Brown-2009.jpg' },
+            { id: 'BGS-Yellow-1023', category: 'BGS Silicone Bumper', name: 'BGS-Yellow-1023', image: 'https://hande.zzydhj.com/hande/BGS-Yellow-1023.jpg' },
+            { id: 'BGS-Pink-304', category: 'BGS Silicone Bumper', name: 'BGS-Pink-304', image: 'https://hande.zzydhj.com/hande/BGS-Pink-304.jpg' },
+            { id: 'BGS-Blue-286', category: 'BGS Silicone Bumper', name: 'BGS-Blue-286', image: 'https://hande.zzydhj.com/hande/BGS-Blue-286.jpg' },
+            { id: 'BGS-Red-185', category: 'BGS Silicone Bumper', name: 'BGS-Red-185', image: 'https://hande.zzydhj.com/hande/BGS-Red-185.jpg' },
+            { id: 'BGS-Clear', category: 'BGS Silicone Bumper', name: 'BGS-Clear', image: 'https://hande.zzydhj.com/hande/BGS-Clear.jpg' },
+            { id: 'BGS-White-9010', category: 'BGS Silicone Bumper', name: 'BGS-White-9010', image: 'https://hande.zzydhj.com/hande/BGS-White-9010.jpg' },
+            { id: 'BGS-Green-6024', category: 'BGS Silicone Bumper', name: 'BGS-Green-6024', image: 'https://hande.zzydhj.com/hande/BGS-Green-6024.jpg' },
+            { id: 'BGS-Blue-2017', category: 'BGS Silicone Bumper', name: 'BGS-Blue-2017', image: 'https://hande.zzydhj.com/hande/BGS-Blue-2017.jpg' },
+            { id: 'BGS-Rose-Red-4006', category: 'BGS Silicone Bumper', name: 'BGS-Rose-Red-4006', image: 'https://hande.zzydhj.com/hande/BGS-Rose-Red-4006.jpg' },
+            { id: 'BGS-Red-3020', category: 'BGS Silicone Bumper', name: 'BGS-Red-3020', image: 'https://hande.zzydhj.com/hande/BGS-Red-3020.jpg' },
+            { id: 'BGS-Black-9017', category: 'BGS Silicone Bumper', name: 'BGS-Black-9017', image: 'https://hande.zzydhj.com/hande/BGS-Black-9017.jpg' },
+            { id: 'BGS-Green-2083C', category: 'BGS Silicone Bumper', name: 'BGS-Green-2083C', image: 'https://hande.zzydhj.com/hande/BGS-Green-2083C.jpg' },
+            { id: 'BGS-Light-Pink-515C', category: 'BGS Silicone Bumper', name: 'BGS-Light-Pink-515C', image: 'https://hande.zzydhj.com/hande/BGS-Light-Pink-515C.jpg' },
+
+            { id: '红色185C+黑色', category: 'PSA 2 Color Silicone Bumper', name: '红色185C+黑色', image: 'https://hande.zzydhj.com/hande/%E7%BA%A2%E8%89%B2185C%2B%E9%BB%91%E8%89%B2.jpg' },
+            { id: '黄色130C+咖啡红202C', category: 'PSA 2 Color Silicone Bumper', name: '黄色130C+咖啡红202C', image: 'https://hande.zzydhj.com/hande/%E9%BB%84%E8%89%B2130C%2B%E5%92%96%E5%95%A1%E7%BA%A2202C.jpg' },
+            { id: '黄色467C+黑色', category: 'PSA 2 Color Silicone Bumper', name: '黄色467C+黑色', image: 'https://hande.zzydhj.com/hande/%E9%BB%84%E8%89%B2467C%2B%E9%BB%91%E8%89%B2.jpg' },
+            { id: '黄色1235C+绿色356C', category: 'PSA 2 Color Silicone Bumper', name: '黄色1235C+绿色356C', image: 'https://hande.zzydhj.com/hande/%E9%BB%84%E8%89%B21235C%2B%E7%BB%BF%E8%89%B2356C.jpg' },
+            { id: '军绿色5743C+绿色7737C', category: 'PSA 2 Color Silicone Bumper', name: '军绿色5743C+绿色7737C', image: 'https://hande.zzydhj.com/hande/%E5%86%9B%E7%BB%BF%E8%89%B25743C%2B%E7%BB%BF%E8%89%B27737C.jpg' },
+            { id: '蓝色286C+红色186C', category: 'PSA 2 Color Silicone Bumper', name: '蓝色286C+红色186C', image: 'https://hande.zzydhj.com/hande/%E8%93%9D%E8%89%B2286C%2B%E7%BA%A2%E8%89%B2186C.jpg' },
+            { id: '蓝色286C+黄色1235C', category: 'PSA 2 Color Silicone Bumper', name: '蓝色286C+黄色1235C', image: 'https://hande.zzydhj.com/hande/%E8%93%9D%E8%89%B2286C%2B%E9%BB%84%E8%89%B21235C.jpg' },
+            { id: '蓝色295C+白色11-4001', category: 'PSA 2 Color Silicone Bumper', name: '蓝色295C+白色11-4001', image: 'https://hande.zzydhj.com/hande/%E8%93%9D%E8%89%B2295C%2B%E7%99%BD%E8%89%B211-4001.jpg' },
+            { id: '绿色361C+蓝色295C', category: 'PSA 2 Color Silicone Bumper', name: '绿色361C+蓝色295C', image: 'https://hande.zzydhj.com/hande/%E7%BB%BF%E8%89%B2361C%2B%E8%93%9D%E8%89%B2295C.jpg' },
+            { id: '墨绿色5605C+黑色', category: 'PSA 2 Color Silicone Bumper', name: '墨绿色5605C+黑色', image: 'https://hande.zzydhj.com/hande/%E5%A2%A8%E7%BB%BF%E8%89%B25605C%2B%E9%BB%91%E8%89%B2.jpg' },
+
+
+
+
+
+            { id: 'HY019-A', category: 'PSA Glossy Finish No Plate', name: 'HY019-A', image: 'https://hande.zzydhj.com/hande/HY019-A.jpg' },
+            { id: 'HY016-A', category: 'PSA Glossy Finish No Plate', name: 'HY016-A', image: 'https://hande.zzydhj.com/hande/HY016-A.jpg' },
+            { id: 'HY003-A', category: 'PSA Glossy Finish No Plate', name: 'HY003-A', image: 'https://hande.zzydhj.com/hande/HY003-A.jpg' },
+
+            { id: 'ALL-A', category: 'PSA Alu Speckled', name: 'ALL-A', image: 'https://hande.zzydhj.com/hande/ALL-A.jpg' },
+            { id: '渐变蓝黄飘花A-1', category: 'PSA Alu Speckled', name: 'A-1', image: 'https://hande.zzydhj.com/hande/A-1.jpg' },
+            { id: '渐变黑金飘花A-2', category: 'PSA Alu Speckled', name: 'A-2', image: 'https://hande.zzydhj.com/hande/A-2.jpg' },
+            { id: '渐变蓝紫飘花A-3', category: 'PSA Alu Speckled', name: 'A-3', image: 'https://hande.zzydhj.com/hande/A-3.jpg' },
+            { id: '渐变青紫飘花A-4', category: 'PSA Alu Speckled', name: 'A-4', image: 'https://hande.zzydhj.com/hande/A-4.jpg' },
+            //{ id: '幻影红A-5', category: 'PSA Alu Speckled', name: 'A-5', image: 'https://hande.zzydhj.com/hande/A-5.jpg' },
+            //{ id: '星空蓝-水贴A-6', category: 'PSA Alu Speckled', name: 'A-6', image: 'https://hande.zzydhj.com/hande/A-6.jpg' },
+            //{ id: '星空黑-水贴A-7', category: 'PSA Alu Speckled', name: 'A-7', image: 'https://hande.zzydhj.com/hande/A-7.jpg' },
+            //{ id: '星空红-水贴A-9', category: 'PSA Alu Speckled', name: 'A-9', image: 'https://hande.zzydhj.com/hande/A-9.jpg' },
+            //{ id: '幻影蓝A-10', category: 'PSA Alu Speckled', name: 'A-10', image: 'https://hande.zzydhj.com/hande/A-10.jpg' },
+            { id: '木纹A-11', category: 'PSA Alu Speckled', name: 'A-11', image: 'https://hande.zzydhj.com/hande/A-11.jpg' },
+
+            { id: 'ALL-B', category: 'PSA Alu Glossy', name: 'ALL-B', image: 'https://hande.zzydhj.com/hande/ALL-B.jpg' },
+            { id: '亮面金B-1', category: 'PSA Alu Glossy', name: 'B-1', image: 'https://hande.zzydhj.com/hande/B-1.jpg' },
+            { id: '亮面银B-2', category: 'PSA Alu Glossy', name: 'B-2', image: 'https://hande.zzydhj.com/hande/B-2.jpg' },
+            { id: '亮面紫B-3', category: 'PSA Alu Glossy', name: 'B-3', image: 'https://hande.zzydhj.com/hande/B-3.jpg' },
+            { id: '亮面红B-4', category: 'PSA Alu Glossy', name: 'B-4', image: 'https://hande.zzydhj.com/hande/B-4.jpg' },
+            { id: '亮面黑B-5', category: 'PSA Alu Glossy', name: 'B-5', image: 'https://hande.zzydhj.com/hande/B-5.jpg' },
+            { id: '亮面橙B-6', category: 'PSA Alu Glossy', name: 'B-6', image: 'https://hande.zzydhj.com/hande/B-6.jpg' },
+            { id: '亮面浅蓝B-9', category: 'PSA Alu Glossy', name: 'B-9', image: 'https://hande.zzydhj.com/hande/B-9.jpg' },
+            { id: '亮面灰B-10', category: 'PSA Alu Glossy', name: 'B-10', image: 'https://hande.zzydhj.com/hande/B-10.jpg' },
+
+            { id: '烤瓷白B-7', category: 'PSA Alu Porcelain', name: 'B-7', image: 'https://hande.zzydhj.com/hande/B-7.jpg' },
+            { id: '烤瓷黄B-8', category: 'PSA Alu Porcelain', name: 'B-8', image: 'https://hande.zzydhj.com/hande/B-8.jpg' },
+
+            { id: 'ALL-C', category: 'PSA Alu Gradient', name: 'ALL-C', image: 'https://hande.zzydhj.com/hande/ALL-C.jpg' },
+            { id: '渐变蓝红C-1', category: 'PSA Alu Gradient', name: 'C-1', image: 'https://hande.zzydhj.com/hande/C-1.jpg' },
+            { id: '渐变黑紫C-2', category: 'PSA Alu Gradient', name: 'C-2', image: 'https://hande.zzydhj.com/hande/C-2.jpg' },
+            { id: '渐变蓝紫C-3', category: 'PSA Alu Gradient', name: 'C-3', image: 'https://hande.zzydhj.com/hande/C-3.jpg' },
+            { id: '渐变黑橙C-4', category: 'PSA Alu Gradient', name: 'C-4', image: 'https://hande.zzydhj.com/hande/C-4.jpg' },
+            { id: '渐变蓝黄C-5', category: 'PSA Alu Gradient', name: 'C-5', image: 'https://hande.zzydhj.com/hande/C-5.jpg' },
+            { id: '渐变黄绿C-6', category: 'PSA Alu Gradient', name: 'C-6', image: 'https://hande.zzydhj.com/hande/C-6.jpg' },
+            { id: '渐变蓝黑C-7', category: 'PSA Alu Gradient', name: 'C-7', image: 'https://hande.zzydhj.com/hande/C-7.jpg' },
+            { id: '渐变蓝粉C-8', category: 'PSA Alu Gradient', name: 'C-8', image: 'https://hande.zzydhj.com/hande/C-8.jpg' },
+            { id: '渐变黑绿C-9', category: 'PSA Alu Gradient', name: 'C-9', image: 'https://hande.zzydhj.com/hande/C-9.jpg' },
+            { id: '渐变黑金C-10', category: 'PSA Alu Gradient', name: 'C-10', image: 'https://hande.zzydhj.com/hande/C-10.jpg' },
+            { id: '渐变黑红C-11', category: 'PSA Alu Gradient', name: 'C-11', image: 'https://hande.zzydhj.com/hande/C-11.jpg' },
+            { id: '渐变黄紫C-12', category: 'PSA Alu Gradient', name: 'C-12', image: 'https://hande.zzydhj.com/hande/C-12.jpg' },
+            { id: '渐变蓝绿C-13', category: 'PSA Alu Gradient', name: 'C-13', image: 'https://hande.zzydhj.com/hande/C-13.jpg' },
+            { id: '渐变银粉C-14', category: 'PSA Alu Gradient', name: 'C-14', image: 'https://hande.zzydhj.com/hande/C-14.jpg' },
+            { id: '渐变粉紫C-16', category: 'PSA Alu Gradient', name: 'C-16', image: 'https://hande.zzydhj.com/hande/C-16.jpg' },
+            { id: '渐变黑粉C-17', category: 'PSA Alu Gradient', name: 'C-17', image: 'https://hande.zzydhj.com/hande/C-17.jpg' },
+            { id: '渐变红金C-18', category: 'PSA Alu Gradient', name: 'C-18', image: 'https://hande.zzydhj.com/hande/C-18.jpg' },
+            { id: '渐变红绿C-19', category: 'PSA Alu Gradient', name: 'C-19', image: 'https://hande.zzydhj.com/hande/C-19.jpg' },
+
+            { id: '三色渐变C-15', category: 'PSA Alu Gradient 3 Color', name: 'C-15', image: 'https://hande.zzydhj.com/hande/C-15.jpg' },
+
+            { id: 'ALL-D', category: 'PSA Alu Single Color', name: 'ALL-D', image: 'https://hande.zzydhj.com/hande/ALL-D.jpg' },
+            { id: '墨绿色D-1', category: 'PSA Alu Single Color', name: 'D-1', image: 'https://hande.zzydhj.com/hande/D-1.jpg' },
+            { id: '玫红色D-2', category: 'PSA Alu Single Color', name: 'D-2', image: 'https://hande.zzydhj.com/hande/D-2.jpg' },
+            { id: '粉色D-3', category: 'PSA Alu Single Color', name: 'D-3', image: 'https://hande.zzydhj.com/hande/D-3.jpg' },
+            { id: '绿色D-4', category: 'PSA Alu Single Color', name: 'D-4', image: 'https://hande.zzydhj.com/hande/D-4.jpg' },
+            { id: '黑色D-5', category: 'PSA Alu Single Color', name: 'D-5', image: 'https://hande.zzydhj.com/hande/D-5.jpg' },
+            { id: '银色D-6', category: 'PSA Alu Single Color', name: 'D-6', image: 'https://hande.zzydhj.com/hande/D-6.jpg' },
+            { id: '暗红色D-7', category: 'PSA Alu Single Color', name: 'D-7', image: 'https://hande.zzydhj.com/hande/D-7.jpg' },
+            { id: '蓝色D-8', category: 'PSA Alu Single Color', name: 'D-8', image: 'https://hande.zzydhj.com/hande/D-8.jpg' },
+            { id: '橙色D-9', category: 'PSA Alu Single Color', name: 'D-9', image: 'https://hande.zzydhj.com/hande/D-9.jpg' },
+            { id: '薄荷绿D-10', category: 'PSA Alu Single Color', name: 'D-10', image: 'https://hande.zzydhj.com/hande/D-10.jpg' },
+            { id: '橘黄色D-11', category: 'PSA Alu Single Color', name: 'D-11', image: 'https://hande.zzydhj.com/hande/D-11.jpg' },
+            { id: '红色D-12', category: 'PSA Alu Single Color', name: 'D-12', image: 'https://hande.zzydhj.com/hande/D-12.jpg' },
+            { id: '摩卡棕D-13', category: 'PSA Alu Single Color', name: 'D-13', image: 'https://hande.zzydhj.com/hande/D-13.jpg' },
+            { id: '宇宙蓝D-14', category: 'PSA Alu Single Color', name: 'D-14', image: 'https://hande.zzydhj.com/hande/D-14.jpg' },
+            { id: '紫色D-15', category: 'PSA Alu Single Color', name: 'D-15', image: 'https://hande.zzydhj.com/hande/D-15.jpg' },
+            { id: '柠檬黄D-16', category: 'PSA Alu Single Color', name: 'D-16', image: 'https://hande.zzydhj.com/hande/D-16.jpg' },
+            { id: '金色D-17', category: 'PSA Alu Single Color', name: 'D-17', image: 'https://hande.zzydhj.com/hande/D-17.jpg' },
+            { id: '浅蓝D-18', category: 'PSA Alu Single Color', name: 'D-18', image: 'https://hande.zzydhj.com/hande/D-18.jpg' },
+
+            { id: '红色E-1', category: 'Alu Magnetic Bumper', name: 'E-1', image: 'https://hande.zzydhj.com/hande/E-1.jpg' },
+            { id: '墨绿E-2', category: 'Alu Magnetic Bumper', name: 'E-2', image: 'https://hande.zzydhj.com/hande/E-2.jpg' },
+            { id: '深蓝E-3', category: 'Alu Magnetic Bumper', name: 'E-3', image: 'https://hande.zzydhj.com/hande/E-3.jpg' },
+            { id: '黄色E-4', category: 'Alu Magnetic Bumper', name: 'E-4', image: 'https://hande.zzydhj.com/hande/E-4.jpg' },
+            { id: '橘黄E-5', category: 'Alu Magnetic Bumper', name: 'E-5', image: 'https://hande.zzydhj.com/hande/E-5.jpg' },
+            { id: '宇宙蓝E-6', category: 'Alu Magnetic Bumper', name: 'E-6', image: 'https://hande.zzydhj.com/hande/E-6.jpg' },
+            { id: '橙色E-7', category: 'Alu Magnetic Bumper', name: 'E-7', image: 'https://hande.zzydhj.com/hande/E-7.jpg' },
+            { id: '玫红E-8', category: 'Alu Magnetic Bumper', name: 'E-8', image: 'https://hande.zzydhj.com/hande/E-8.jpg' },
+            { id: '粉色E-9', category: 'Alu Magnetic Bumper', name: 'E-9', image: 'https://hande.zzydhj.com/hande/E-9.jpg' },
+            { id: '浅蓝E-10', category: 'Alu Magnetic Bumper', name: 'E-10', image: 'https://hande.zzydhj.com/hande/E-10.jpg' },
+            { id: '浅绿E-11', category: 'Alu Magnetic Bumper', name: 'E-11', image: 'https://hande.zzydhj.com/hande/E-11.jpg' },
+            { id: '紫色E-12', category: 'Alu Magnetic Bumper', name: 'E-12', image: 'https://hande.zzydhj.com/hande/E-12.jpg' },
+            { id: '银色E-13', category: 'Alu Magnetic Bumper', name: 'E-13', image: 'https://hande.zzydhj.com/hande/E-13.jpg' },
+            { id: '金色E-14', category: 'Alu Magnetic Bumper', name: 'E-14', image: 'https://hande.zzydhj.com/hande/E-14.jpg' },
+            { id: '黑色E-15', category: 'Alu Magnetic Bumper', name: 'E-15', image: 'https://hande.zzydhj.com/hande/E-15.jpg' },
+
+
+            { id: 'ALL-F', category: 'Alu PSA Bumper with Band', name: 'ALL-F', image: 'https://hande.zzydhj.com/hande/F-0.jpg' },
+            { id: '橙色F-1', category: 'Alu PSA Bumper with Band', name: 'F-1', image: 'https://hande.zzydhj.com/hande/F-1.jpg' },
+            { id: '蓝色F-2', category: 'Alu PSA Bumper with Band', name: 'F-2', image: 'https://hande.zzydhj.com/hande/F-2.jpg' },
+            { id: '浅蓝色F-3', category: 'Alu PSA Bumper with Band', name: 'F-3', image: 'https://hande.zzydhj.com/hande/F-3.jpg' },
+            { id: '绿色F-4', category: 'Alu PSA Bumper with Band', name: 'F-4', image: 'https://hande.zzydhj.com/hande/F-4.jpg' },
+            { id: '金色F-5', category: 'Alu PSA Bumper with Band', name: 'F-5', image: 'https://hande.zzydhj.com/hande/F-5.jpg' },
+            { id: '红色F-6', category: 'Alu PSA Bumper with Band', name: 'F-6', image: 'https://hande.zzydhj.com/hande/F-6.jpg' },
+            { id: '银色F-7', category: 'Alu PSA Bumper with Band', name: 'F-7', image: 'https://hande.zzydhj.com/hande/F-7.jpg' },
+            { id: '粉色F-8', category: 'Alu PSA Bumper with Band', name: 'F-8', image: 'https://hande.zzydhj.com/hande/F-8.jpg' },
+            { id: '浅绿色F-9', category: 'Alu PSA Bumper with Band', name: 'F-9', image: 'https://hande.zzydhj.com/hande/F-9.jpg' },
+            { id: '紫色F-10', category: 'Alu PSA Bumper with Band', name: 'F-10', image: 'https://hande.zzydhj.com/hande/F-10.jpg' },
+            { id: '黑色F-11', category: 'Alu PSA Bumper with Band', name: 'F-11', image: 'https://hande.zzydhj.com/hande/F-11.jpg' },
+            { id: '亮面金色F-12', category: 'Alu PSA Bumper with Band', name: 'F-12', image: 'https://hande.zzydhj.com/hande/F-12.jpg' },
+            { id: '亮面银色F-13', category: 'Alu PSA Bumper with Band', name: 'F-13', image: 'https://hande.zzydhj.com/hande/F-13.jpg' },
+
+
+
+            { id: '渐变蓝黄飘花BGS-A-1', category: 'BGS Alu Speckled', name: 'BGS-A-1', image: 'https://hande.zzydhj.com/hande/A-1.jpg' },
+            { id: '渐变黑金飘花BGS-A-2', category: 'BGS Alu Speckled', name: 'BGS-A-2', image: 'https://hande.zzydhj.com/hande/A-2.jpg' },
+            { id: '渐变蓝紫飘花BGS-A-3', category: 'BGS Alu Speckled', name: 'BGS-A-3', image: 'https://hande.zzydhj.com/hande/A-3.jpg' },
+            { id: '渐变青紫飘花BGS-A-4', category: 'BGS Alu Speckled', name: 'BGS-A-4', image: 'https://hande.zzydhj.com/hande/A-4.jpg' },
+
+
+            { id: '亮面金BGS-B-1', category: 'BGS Alu Glossy', name: 'BGS-B-1', image: 'https://hande.zzydhj.com/hande/B-1.jpg' },
+            { id: '亮面银BGS-B-2', category: 'BGS Alu Glossy', name: 'BGS-B-2', image: 'https://hande.zzydhj.com/hande/B-2.jpg' },
+            { id: '亮面紫BGS-B-3', category: 'BGS Alu Glossy', name: 'BGS-B-3', image: 'https://hande.zzydhj.com/hande/B-3.jpg' },
+            { id: '亮面红BGS-B-4', category: 'BGS Alu Glossy', name: 'BGS-B-4', image: 'https://hande.zzydhj.com/hande/B-4.jpg' },
+            { id: '亮面黑BGS-B-5', category: 'BGS Alu Glossy', name: 'BGS-B-5', image: 'https://hande.zzydhj.com/hande/B-5.jpg' },
+            { id: '亮面橙BGS-B-6', category: 'BGS Alu Glossy', name: 'BGS-B-6', image: 'https://hande.zzydhj.com/hande/B-6.jpg' },
+            { id: '亮面浅蓝BGS-B-9', category: 'BGS Alu Glossy', name: 'BGS-B-9', image: 'https://hande.zzydhj.com/hande/B-9.jpg' },
+            { id: '亮面灰BGS-B-10', category: 'BGS Alu Glossy', name: 'BGS-B-10', image: 'https://hande.zzydhj.com/hande/B-10.jpg' },
+
+            { id: '烤瓷白BGS-B-7', category: 'BGS Alu Porcelain', name: 'BGS-B-7', image: 'https://hande.zzydhj.com/hande/B-7.jpg' },
+            { id: '烤瓷黄BGS-B-8', category: 'BGS Alu Porcelain', name: 'BGS-B-8', image: 'https://hande.zzydhj.com/hande/B-8.jpg' },
+
+
+            { id: '渐变蓝红BGS-C-1', category: 'BGS Alu Gradient', name: 'BGS-C-1', image: 'https://hande.zzydhj.com/hande/C-1.jpg' },
+            { id: '渐变黑紫BGS-C-2', category: 'BGS Alu Gradient', name: 'BGS-C-2', image: 'https://hande.zzydhj.com/hande/C-2.jpg' },
+            { id: '渐变蓝紫BGS-C-3', category: 'BGS Alu Gradient', name: 'BGS-C-3', image: 'https://hande.zzydhj.com/hande/C-3.jpg' },
+            { id: '渐变蓝黄BGS-C-5', category: 'BGS Alu Gradient', name: 'BGS-C-5', image: 'https://hande.zzydhj.com/hande/C-5.jpg' },
+            { id: '渐变蓝粉BGS-C-8', category: 'BGS Alu Gradient', name: 'BGS-C-8', image: 'https://hande.zzydhj.com/hande/C-8.jpg' },
+            { id: '渐变黑金BGS-C-10', category: 'BGS Alu Gradient', name: 'BGS-C-10', image: 'https://hande.zzydhj.com/hande/C-10.jpg' },
+            { id: '渐变黑红BGS-C-11', category: 'BGS Alu Gradient', name: 'BGS-C-11', image: 'https://hande.zzydhj.com/hande/C-11.jpg' },
+            { id: '渐变蓝绿BGS-C-13', category: 'BGS Alu Gradient', name: 'BGS-C-13', image: 'https://hande.zzydhj.com/hande/C-13.jpg' },
+            { id: '渐变银粉BGS-C-14', category: 'BGS Alu Gradient', name: 'BGS-C-14', image: 'https://hande.zzydhj.com/hande/C-14.jpg' },
+            { id: '渐变粉紫BGS-C-16', category: 'BGS Alu Gradient', name: 'BGS-C-16', image: 'https://hande.zzydhj.com/hande/C-16.jpg' },
+            { id: '渐变黑粉BGS-C-17', category: 'BGS Alu Gradient', name: 'BGS-C-17', image: 'https://hande.zzydhj.com/hande/C-17.jpg' },
+            { id: '渐变红金BGS-C-18', category: 'BGS Alu Gradient', name: 'BGS-C-18', image: 'https://hande.zzydhj.com/hande/C-18.jpg' },
+
+
+            { id: '墨绿色BGS-D-1', category: 'BGS Alu Single Color', name: 'BGS-D-1', image: 'https://hande.zzydhj.com/hande/D-1.jpg' },
+            { id: '玫红色BGS-D-2', category: 'BGS Alu Single Color', name: 'BGS-D-2', image: 'https://hande.zzydhj.com/hande/D-2.jpg' },
+            { id: '粉色BGS-D-3', category: 'BGS Alu Single Color', name: 'BGS-D-3', image: 'https://hande.zzydhj.com/hande/D-3.jpg' },
+            { id: '绿色BGS-D-4', category: 'BGS Alu Single Color', name: 'BGS-D-4', image: 'https://hande.zzydhj.com/hande/D-4.jpg' },
+            { id: '黑色BGS-D-5', category: 'BGS Alu Single Color', name: 'BGS-D-5', image: 'https://hande.zzydhj.com/hande/D-5.jpg' },
+            { id: '银色BGS-D-6', category: 'BGS Alu Single Color', name: 'BGS-D-6', image: 'https://hande.zzydhj.com/hande/D-6.jpg' },
+            { id: '蓝色BGS-D-8', category: 'BGS Alu Single Color', name: 'BGS-D-8', image: 'https://hande.zzydhj.com/hande/D-8.jpg' },
+            { id: '橙色BGS-D-9', category: 'BGS Alu Single Color', name: 'BGS-D-9', image: 'https://hande.zzydhj.com/hande/D-9.jpg' },
+            { id: '薄荷绿BGS-D-10', category: 'BGS Alu Single Color', name: 'BGS-D-10', image: 'https://hande.zzydhj.com/hande/D-10.jpg' },
+            { id: '橘黄色BGS-D-11', category: 'BGS Alu Single Color', name: 'BGS-D-11', image: 'https://hande.zzydhj.com/hande/D-11.jpg' },
+            { id: '红色BGS-D-12', category: 'BGS Alu Single Color', name: 'BGS-D-12', image: 'https://hande.zzydhj.com/hande/D-12.jpg' },
+            { id: '紫色BGS-D-15', category: 'BGS Alu Single Color', name: 'BGS-D-15', image: 'https://hande.zzydhj.com/hande/D-15.jpg' },
+            { id: '柠檬黄BGS-D-16', category: 'BGS Alu Single Color', name: 'BGS-D-16', image: 'https://hande.zzydhj.com/hande/D-16.jpg' },
+            { id: '金色BGS-D-17', category: 'BGS Alu Single Color', name: 'BGS-D-17', image: 'https://hande.zzydhj.com/hande/D-17.jpg' },
+            { id: '浅蓝BGS-D-18', category: 'BGS Alu Single Color', name: 'BGS-D-18', image: 'https://hande.zzydhj.com/hande/D-18.jpg' },
+
+
+            { id: 'For-PSA', category: 'Acrylic display box', name: 'For-PSA', image: 'https://hande.zzydhj.com/hande/ac-psa.jpg' },
+            { id: 'For-BGS', category: 'Acrylic display box', name: 'For-BGS', image: 'https://hande.zzydhj.com/hande/ac-bgs.jpg' },
+            { id: 'For-PSA-Red', category: 'Acrylic display box', name: 'For-PSA-Red', image: 'https://hande.zzydhj.com/hande/ac-psa-red.jpg' },
+            { id: 'For-PSA-Yellow', category: 'Acrylic display box', name: 'For-PSA-Yellow', image: 'https://hande.zzydhj.com/hande/ac-psa-yellow.jpg' },
+            { id: 'For-PSA-Blue', category: 'Acrylic display box', name: 'For-PSA-Blue', image: 'https://hande.zzydhj.com/hande/ac-psa-blue.jpg' },
+            { id: '3 for PSA', category: 'Acrylic display box', name: '3 for PSA', image: 'https://hande.zzydhj.com/hande/3-for-PSA.jpg' },
+            { id: '3 For Metal PSA Slab', category: 'Acrylic display box', name: '3 For Metal PSA Slab', image: 'https://hande.zzydhj.com/hande/3-For-Metal-PSA-Slab.jpg' },
+            { id: 'For-PSA-Slab', category: 'Acrylic display box', name: 'For-PSA-Slab', image: 'https://hande.zzydhj.com/hande/ac-psa-slab.jpg' },
+            { id: 'For-BGS-Slab', category: 'Acrylic display box', name: 'For-BGS-Slab', image: 'https://hande.zzydhj.com/hande/ac-bgs-slab.jpg' },
+
+
+
+
+            { id: 'Booster-Box-(5mm)', category: 'Acrylic Booster Box Case', name: 'Booster-Box-(5mm)', image: 'https://hande.zzydhj.com/hande/Booster-Box-(5mm).jpg' },
+            { id: 'Booster-Bundle&Build-(5mm)', category: 'Acrylic Booster Box Case', name: 'Booster-Bundle&Build-(5mm)', image: 'https://hande.zzydhj.com/hande/Booster-Bundle&Build-(5mm).jpg' },
+            { id: 'PTCG-ETB-(5mm)', category: 'Acrylic Booster Box Case', name: 'PTCG-ETB-(5mm)', image: 'https://hande.zzydhj.com/hande/PTCG-ETB-(5mm).jpg' },
+            { id: 'PTCG-ETB-(5mm+8mm)', category: 'Acrylic Booster Box Case', name: 'PTCG-ETB-(5mm+8mm)', image: 'https://hande.zzydhj.com/hande/PTCG-ETB-(5mm+8mm).jpg' },
+            { id: 'Japanese-Booster-(5mm)', category: 'Acrylic Booster Box Case', name: 'Japanese-Booster-(5mm)', image: 'https://hande.zzydhj.com/hande/Japanese-Booster-(5mm).jpg' },
+            { id: 'Japanese-standard-(5mm)', category: 'Acrylic Booster Box Case', name: 'Japanese-standard-(5mm)', image: 'https://hande.zzydhj.com/hande/Japanese-standard-(5mm).jpg' },
+            { id: 'PTCG-151-UPC-(5mm+8mm)', category: 'Acrylic Booster Box Case', name: 'PTCG-151-UPC-(5mm+8mm)', image: 'https://hande.zzydhj.com/hande/PTCG-151-UPC-(5mm+8mm).jpg' },
+            { id: 'Center-ETB-(5mm)', category: 'Acrylic Booster Box Case', name: 'Center-ETB-(5mm)', image: 'https://hande.zzydhj.com/hande/Center-ETB-(5mm).jpg' },
+            { id: 'PTCG-Mario-Pikachu-(5mm)', category: 'Acrylic Booster Box Case', name: 'PTCG-Mario-Pikachu-(5mm)', image: 'https://hande.zzydhj.com/hande/PTCG-Mario-Pikachu-(5mm).jpg' },
+            { id: 'PTCG-SPC-(5mm+8mm)', category: 'Acrylic Booster Box Case', name: 'PTCG-SPC-(5mm+8mm).jpg', image: 'https://hande.zzydhj.com/hande/PTCG-SPC-(5mm+8mm).jpg' },
+            { id: 'Blooming-Water-(5mm+8mm)', category: 'Acrylic Booster Box Case', name: 'Blooming-Water-(5mm+8mm)', image: 'https://hande.zzydhj.com/hande/Blooming-Water-(5mm+8mm).jpg' },
+            { id: '151-Booster-Bundle-Display-(5mm+8mm)', category: 'Acrylic Booster Box Case', name: '151-Booster-Bundle-Display-(5mm+8mm)', image: 'https://hande.zzydhj.com/hande/151-Booster-Bundle-Display-(5mm+8mm).jpg' },
+            { id: 'PTCG-Mega-Brave-(5mm+8mm)', category: 'Acrylic Booster Box Case', name: 'PTCG-Mega-Brave-(5mm+8mm)', image: 'https://hande.zzydhj.com/hande/PTCG-Mega-Brave-(5mm+8mm).jpg' },
+
+
+
+
+            { id: 'Booster-Acrylic-Case', category: 'Acrylic Booster Box Case', name: 'Booster-Acrylic-Case', image: 'https://hande.zzydhj.com/hande/Booster-Box-Acrylic-Case.jpg' },
+            { id: 'ETB-Acrylic-Case', category: 'Acrylic Booster Box Case', name: 'ETB-Acrylic-Case', image: 'https://hande.zzydhj.com/hande/ETB-Acrylic-Case.jpg' },
+
+
+            { id: '4-Pocket-PP-Binder-(Blue)', category: '4 Pocket PP Card Binder', name: '4-Pocket-PP-Binder-(Blue)', image: 'https://hande.zzydhj.com/hande/4-Pocket-PP-Binder-(Blue).jpg' },
+            { id: '4-Pocket-PP-Binder-(Black)', category: '4 Pocket PP Card Binder', name: '4-Pocket-PP-Binder-(Black)', image: 'https://hande.zzydhj.com/hande/4-Pocket-PP-Binder-(Black).jpg' },
+            { id: '4-Pocket-PP-Binder-(Green)', category: '4 Pocket PP Card Binder', name: '4-Pocket-PP-Binder-(Green)', image: 'https://hande.zzydhj.com/hande/4-Pocket-PP-Binder-(Green).jpg' },
+            { id: '4-Pocket-PP-Binder-(Purple)', category: '4 Pocket PP Card Binder', name: '4-Pocket-PP-Binder-(Purple)', image: 'https://hande.zzydhj.com/hande/4-Pocket-PP-Binder-(Purple).jpg' },
+            { id: '4-Pocket-PP-Binder-(Red)', category: '4 Pocket PP Card Binder', name: '4-Pocket-PP-Binder-(Red)', image: 'https://hande.zzydhj.com/hande/4-Pocket-PP-Binder-(Red).jpg' },
+            { id: '4-Pocket-PP-Binder-(Pink)', category: '4 Pocket PP Card Binder', name: '4-Pocket-PP-Binder-(Pink)', image: 'https://hande.zzydhj.com/hande/4-Pocket-PP-Binder-(Pink).jpg' },
+            { id: '4-Pocket-PP-Binder-(White)', category: '4 Pocket PP Card Binder', name: '4-Pocket-PP-Binder-(White)', image: 'https://hande.zzydhj.com/hande/4-Pocket-PP-Binder-(White).jpg' },
+            { id: '4-Pocket-PP-Binder-(Yellow)', category: '4 Pocket PP Card Binder', name: '4-Pocket-PP-Binder-(Yellow)', image: 'https://hande.zzydhj.com/hande/4-Pocket-PP-Binder-(Yellow).jpg' },
+
+
+            { id: '9-Pocket-PP-Binder-(Blue)', category: '9 Pocket PP Card Binder', name: '9-Pocket-PP-Binder-(Blue)', image: 'https://hande.zzydhj.com/hande/6-Pocket-PP-Binder-(Blue).jpg' },
+            { id: '9-Pocket-PP-Binder-(Black)', category: '9 Pocket PP Card Binder', name: '9-Pocket-PP-Binder-(Black)', image: 'https://hande.zzydhj.com/hande/6-Pocket-PP-Binder-(Black).jpg' },
+            { id: '9-Pocket-PP-Binder-(Green)', category: '9 Pocket PP Card Binder', name: '9-Pocket-PP-Binder-(Green)', image: 'https://hande.zzydhj.com/hande/6-Pocket-PP-Binder-(Green).jpg' },
+            { id: '9-Pocket-PP-Binder-(Purple)', category: '9 Pocket PP Card Binder', name: '9-Pocket-PP-Binder-(Purple)', image: 'https://hande.zzydhj.com/hande/6-Pocket-PP-Binder-(Purple).jpg' },
+            { id: '9-Pocket-PP-Binder-(Red)', category: '9 Pocket PP Card Binder', name: '9-Pocket-PP-Binder-(Red)', image: 'https://hande.zzydhj.com/hande/6-Pocket-PP-Binder-(Red).jpg' },
+            { id: '9-Pocket-PP-Binder-(Sky-Blue)', category: '9 Pocket PP Card Binder', name: '9-Pocket-PP-Binder-(Sky-Blue)', image: 'https://hande.zzydhj.com/hande/6-Pocket-PP-Binder-(Sky-Blue).jpg' },
+            { id: '9-Pocket-PP-Binder-(White)', category: '9 Pocket PP Card Binder', name: '9-Pocket-PP-Binder-(White)', image: 'https://hande.zzydhj.com/hande/6-Pocket-PP-Binder-(White).jpg' },
+            { id: '9-Pocket-PP-Binder-(Yellow)', category: '9 Pocket PP Card Binder', name: '9-Pocket-PP-Binder-(Yellow)', image: 'https://hande.zzydhj.com/hande/6-Pocket-PP-Binder-(Yellow).jpg' },
+
+            { id: 'Magnetic-PSA-Base-(Black)', category: 'Magnetic PSA Base', name: 'Magnetic-PSA-Base-(Black)', image: 'https://hande.zzydhj.com/hande/Magnetic-PSA-Base-(Black).jpg' },
+            { id: 'Magnetic-PSA-Base-(Blue)', category: 'Magnetic PSA Base', name: 'Magnetic-PSA-Base-(Blue)', image: 'https://hande.zzydhj.com/hande/Magnetic-PSA-Base-(Blue).jpg' },
+            { id: 'Magnetic-PSA-Base-(Gold)', category: 'Magnetic PSA Base', name: 'Magnetic-PSA-Base-(Gold)', image: 'https://hande.zzydhj.com/hande/Magnetic-PSA-Base-(Gold).jpg' },
+            { id: 'Magnetic-PSA-Base-(Green)', category: 'Magnetic PSA Base', name: 'Magnetic-PSA-Base-(Green)', image: 'https://hande.zzydhj.com/hande/Magnetic-PSA-Base-(Green).jpg' },
+            { id: 'Magnetic-PSA-Base-(Light-Blue)', category: 'Magnetic PSA Base', name: 'Magnetic-PSA-Base-(Light-Blue)', image: 'https://hande.zzydhj.com/hande/Magnetic-PSA-Base-(Light-Blue).jpg' },
+            { id: 'Magnetic-PSA-Base-(Orange)', category: 'Magnetic PSA Base', name: 'Magnetic-PSA-Base-(Orange)', image: 'https://hande.zzydhj.com/hande/Magnetic-PSA-Base-(Orange).jpg' },
+            { id: 'Magnetic-PSA-Base-(Pink)', category: 'Magnetic PSA Base', name: 'Magnetic-PSA-Base-(Pink)', image: 'https://hande.zzydhj.com/hande/Magnetic-PSA-Base-(Pink).jpg' },
+            { id: 'Magnetic-PSA-Base-(Purple)', category: 'Magnetic PSA Base', name: 'Magnetic-PSA-Base-(Purple)', image: 'https://hande.zzydhj.com/hande/Magnetic-PSA-Base-(Purple).jpg' },
+            { id: 'Magnetic-PSA-Base-(Red)', category: 'Magnetic PSA Base', name: 'Magnetic-PSA-Base-(Red)', image: 'https://hande.zzydhj.com/hande/Magnetic-PSA-Base-(Red).jpg' },
+            { id: 'Magnetic-PSA-Base-(Silver)', category: 'Magnetic PSA Base', name: 'Magnetic-PSA-Base-(Silver)', image: 'https://hande.zzydhj.com/hande/Magnetic-PSA-Base-(Silver).jpg' },
+            { id: 'PSA-35PT-Integrated-Base', category: 'Magnetic PSA Base', name: 'PSA-35PT-Integrated-Base', image: 'https://hande.zzydhj.com/hande/PSA-35PT-Integrated-Base.jpg' },
+
+
+            { id: 'Card-Divider-1', category: 'PP Card Divider', name: 'Card-Divider-1', image: 'https://hande.zzydhj.com/hande/Card-Divider-1.jpg' },
+            { id: 'Card-Divider-2', category: 'PP Card Divider', name: 'Card-Divider-2', image: 'https://hande.zzydhj.com/hande/Card-Divider-2.jpg' },
+            { id: 'Card-Divider-3', category: 'PP Card Divider', name: 'Card-Divider-3', image: 'https://hande.zzydhj.com/hande/Card-Divider-3.jpg' },
+            { id: 'Card-Divider-4', category: 'PP Card Divider', name: 'Card-Divider-4', image: 'https://hande.zzydhj.com/hande/Card-Divider-4.jpg' },
+            { id: 'Card-Divider-5', category: 'PP Card Divider', name: 'Card-Divider-5', image: 'https://hande.zzydhj.com/hande/Card-Divider-5.jpg' },
+            { id: 'Card-Divider-6', category: 'PP Card Divider', name: 'Card-Divider-6', image: 'https://hande.zzydhj.com/hande/Card-Divider-6.jpg' },
+            { id: 'Card-Divider-7', category: 'PP Card Divider', name: 'Card-Divider-7', image: 'https://hande.zzydhj.com/hande/Card-Divider-7.jpg' },
+            { id: 'Card-Divider-8', category: 'PP Card Divider', name: 'Card-Divider-8', image: 'https://hande.zzydhj.com/hande/Card-Divider-8.jpg' },
+            { id: 'Card-Divider-9', category: 'PP Card Divider', name: 'Card-Divider-9', image: 'https://hande.zzydhj.com/hande/Card-Divider-9.jpg' },
+            { id: 'Card-Divider-10', category: 'PP Card Divider', name: 'Card-Divider-10', image: 'https://hande.zzydhj.com/hande/Card-Divider-10.jpg' },
+            { id: 'Card-Divider-11', category: 'PP Card Divider', name: 'Card-Divider-11', image: 'https://hande.zzydhj.com/hande/Card-Divider-11.jpg' },
+            { id: 'Card-Divider-12', category: 'PP Card Divider', name: 'Card-Divider-12', image: 'https://hande.zzydhj.com/hande/Card-Divider-12.jpg' },
+            { id: 'Card-Divider-13', category: 'PP Card Divider', name: 'Card-Divider-13', image: 'https://hande.zzydhj.com/hande/Card-Divider-13.jpg' },
+            { id: 'Card-Divider-14', category: 'PP Card Divider', name: 'Card-Divider-14', image: 'https://hande.zzydhj.com/hande/Card-Divider-14.jpg' },
+            { id: 'Card-Divider-15', category: 'PP Card Divider', name: 'Card-Divider-15', image: 'https://hande.zzydhj.com/hande/Card-Divider-15.jpg' },
+            { id: 'Card-Divider-16', category: 'PP Card Divider', name: 'Card-Divider-16', image: 'https://hande.zzydhj.com/hande/Card-Divider-16.jpg' },
+        ];
+
+
+
+
+        // =============================================
+        // 渲染逻辑（无需修改）
+        // =============================================
+        const categories = [...new Set(products.map(p => p.category))];
+
+        // 封面日期
+        const now = new Date();
+        const dateStr = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}`;
+        document.getElementById('cover-date').textContent = dateStr;
+        document.getElementById('footer-date').textContent = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+        // 目录
+        const tocList = document.getElementById('toc-list');
+        categories.forEach(c => {
+            const count = products.filter(p => p.category === c).length;
+            const item = document.createElement('div');
+            item.className = 'toc-item';
+            item.innerHTML = `${c} <span class="toc-count">${count}</span>`;
+            tocList.appendChild(item);
+        });
+
+        // 产品内容
+        const body = document.getElementById('catalog-body');
+        categories.forEach((cat, idx) => {
+            const items = products.filter(p => p.category === cat);
+
+            // 分隔线（第一个分类前不加）
+            if (idx > 0) {
+                const div = document.createElement('div');
+                div.className = 'section-divider';
+                body.appendChild(div);
+            }
+
+            const section = document.createElement('div');
+            section.className = 'category-section';
+            section.innerHTML = `
+            <div class="cat-header">
+                <span class="cat-name">${cat}</span>
+                <span class="cat-badge">${items.length} Styles</span>
+            </div>
+            <div class="product-grid" id="grid-${idx}">
+                ${items.map(p => `
+                    <div class="product-card">
+                        <div class="img-wrap">
+                            <div class="img-placeholder">LOADING...</div>
+                            <span class="id-badge">${p.id}</span>
+                            <img data-src="${p.image}" alt="${p.name}" loading="lazy"
+                                 onload="this.previousElementSibling.previousElementSibling.style.display='none'"
+                                 onerror="this.style.display='none'">
+                        </div>
+                        <div class="product-name">${p.name}</div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+            body.appendChild(section);
+        });
+
+        // 懒加载图片
+        const lazyImgs = document.querySelectorAll('img[data-src]');
+        if ('IntersectionObserver' in window) {
+            const io = new IntersectionObserver((entries) => {
+                entries.forEach(e => {
+                    if (e.isIntersecting) {
+                        const img = e.target;
+                        img.src = img.dataset.src;
+                        io.unobserve(img);
+                    }
+                });
+            }, { rootMargin: '200px' });
+            lazyImgs.forEach(img => io.observe(img));
+        } else {
+            lazyImgs.forEach(img => img.src = img.dataset.src);
+        }
+
+        // 切换列数：6/8/10/12/14/16，联动间距与字号，并记住选择
+        const COL_PRESETS = {
+            6: { gap: 12, fs: 11 },
+            8: { gap: 10, fs: 11 },
+            10: { gap: 8, fs: 10 },
+            12: { gap: 7, fs: 9 },
+            14: { gap: 6, fs: 9 },
+            16: { gap: 5, fs: 8 }
+        };
+
+        function setCols(n) {
+            const preset = COL_PRESETS[n] || COL_PRESETS[6];
+            const root = document.documentElement.style;
+            root.setProperty('--cols', n);
+            root.setProperty('--gap', preset.gap + 'px');
+            root.setProperty('--name-fs', preset.fs + 'px');
+            document.querySelectorAll('.col-btn').forEach(b => {
+                b.classList.toggle('active', +b.dataset.cols === n);
+            });
+            try { localStorage.setItem('catalog-cols', n); } catch (e) { }
+        }
+
+        // 打开页面时恢复上次使用的列数，默认 6 列
+        let initCols = 6;
+        try { initCols = parseInt(localStorage.getItem('catalog-cols'), 10) || 6; } catch (e) { }
+        setCols(COL_PRESETS[initCols] ? initCols : 6);
+    </script>
+</body>
+
+</html>

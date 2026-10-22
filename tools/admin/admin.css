@@ -1,0 +1,785 @@
+/* admin.css —— 后台界面专用样式。与线上三个页面的样式完全无关，互不引用。 */
+
+* {
+    box-sizing: border-box;
+}
+
+:root {
+    --bg: #f6f7f9;
+    --panel: #ffffff;
+    --line: #e3e6ea;
+    --text: #1f2329;
+    --muted: #6b7280;
+    --blue: #2563eb;
+    --red: #ef4444;
+    --amber: #f59e0b;
+    --green: #0e9f6e;
+}
+
+html,
+body {
+    height: 100%;
+    margin: 0;
+}
+
+body {
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft YaHei", sans-serif;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ---------- 顶栏 ---------- */
+.topbar {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 10px 16px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+    flex-wrap: wrap;
+}
+
+.brand {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+}
+
+.brand .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--green);
+    align-self: center;
+}
+
+.brand strong {
+    font-size: 15px;
+}
+
+.brand .sub {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.site-pick {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.site-pick label {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.dirty {
+    color: var(--amber);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.actions {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+button {
+    font: inherit;
+    font-size: 13px;
+    padding: 6px 12px;
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--text);
+    border-radius: 7px;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #f0f2f5;
+}
+
+button:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+}
+
+button.primary {
+    background: var(--blue);
+    border-color: var(--blue);
+    color: #fff;
+    font-weight: 700;
+}
+
+button.primary:hover {
+    background: #1d4ed8;
+}
+
+input,
+select,
+textarea {
+    font: inherit;
+    font-size: 13px;
+    padding: 6px 8px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: #fff;
+    color: var(--text);
+    width: 100%;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    outline: 2px solid #bfdbfe;
+    border-color: var(--blue);
+}
+
+input[type=checkbox],
+input[type=radio] {
+    width: auto;
+}
+
+/* ---------- 三栏 ---------- */
+/* 全局：hidden 就必须真隐藏。组件只要写了 display:flex/grid，就会压过浏览器自带的
+   [hidden]{display:none}，造成「设了 hidden 但仍然可见」（sitetools 与 batchbar 都踩过）*/
+[hidden] {
+    display: none !important;
+}
+
+.layout {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 236px minmax(0, 1fr) 340px;
+    gap: 12px;
+    padding: 12px;
+    min-height: 0;
+}
+
+/* 服务端进程比代码旧时的提示条：不挡住操作，但要足够显眼 */
+.stale {
+    margin: 0 12px;
+    padding: 8px 12px;
+    background: #fee2e2;
+    border: 1px solid #fca5a5;
+    color: #b91c1c;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.stale code {
+    background: rgba(255, 255, 255, .72);
+    padding: 1px 5px;
+    border-radius: 4px;
+}
+
+/* 危险操作：只用在删除这种要靠撤销或备份才能恢复的动作上，不能与普通按钮长一样 */
+button.danger {
+    color: #b91c1c;
+    border-color: #fca5a5;
+    background: #fef2f2;
+}
+
+button.danger:hover {
+    background: #fee2e2;
+    border-color: #f87171;
+}
+
+.col {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px;
+    overflow: auto;
+    min-height: 0;
+}
+
+.group-title {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin: 14px 0 6px;
+}
+
+/* 左栏 */
+.filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+}
+
+.chip {
+    font-size: 12px;
+    padding: 4px 9px;
+    border-radius: 999px;
+    background: #f1f5f9;
+    border-color: transparent;
+}
+
+.chip.active {
+    background: var(--blue);
+    color: #fff;
+}
+
+.cat-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.cat-group {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--blue);
+    margin-top: 8px;
+}
+
+.cat-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.cat-item:hover {
+    background: #f1f5f9;
+}
+
+.cat-item.active {
+    background: #dbeafe;
+    color: #1d4ed8;
+    font-weight: 700;
+}
+
+.cat-item .n {
+    color: var(--muted);
+}
+
+.stats {
+    font-size: 12px;
+    color: var(--muted);
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.stats b {
+    color: var(--text);
+}
+
+/* 中栏：网格 */
+.hint {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 8px;
+}
+
+.batchbar {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    background: #eef2ff;
+    border: 1px solid #c7d2fe;
+    border-radius: 8px;
+    padding: 6px 8px;
+    margin-bottom: 8px;
+    font-size: 12px;
+}
+
+.batchbar button {
+    font-size: 12px;
+    padding: 4px 8px;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(126px, 1fr));
+    gap: 10px;
+}
+
+.card {
+    position: relative;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+    overflow: hidden;
+    cursor: grab;
+    user-select: none;
+}
+
+.card:hover {
+    border-color: #b6c2d2;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, .08);
+}
+
+.card.sel {
+    border-color: var(--blue);
+    box-shadow: 0 0 0 2px #bfdbfe;
+}
+
+.card.state-disabled {
+    border-style: dashed;
+}
+
+.card.state-hidden {
+    opacity: .45;
+}
+
+.card.state-hidden .thumb::after {
+    content: "已下架";
+    position: absolute;
+    inset: auto 6px 6px auto;
+    background: var(--red);
+    color: #fff;
+    font-size: 10px;
+    padding: 1px 5px;
+    border-radius: 4px;
+}
+
+.card.badimg {
+    border-color: var(--red);
+}
+
+.card.drop-before {
+    box-shadow: -3px 0 0 var(--blue);
+}
+
+.card.drop-after {
+    box-shadow: 3px 0 0 var(--blue);
+}
+
+.thumb {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    background: #f1f5f9 center/cover no-repeat;
+}
+
+.thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.badge {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    background: rgba(15, 23, 42, .72);
+    color: #fff;
+    font-size: 9px;
+    padding: 2px 5px;
+    border-radius: 4px;
+    max-width: calc(100% - 8px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pick {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+}
+
+.meta {
+    padding: 5px 6px 7px;
+}
+
+.meta .name {
+    font-size: 11px;
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.meta .cat {
+    font-size: 10px;
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tags {
+    display: flex;
+    gap: 3px;
+    margin-top: 3px;
+    flex-wrap: wrap;
+}
+
+.tag {
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 999px;
+    background: #f1f5f9;
+    color: var(--muted);
+}
+
+.tag.on {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.tag.grey {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.tag.out {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+/* 已加入产品库但还没被任何站点收录：用最低调的灰，它不是错误，只是待办 */
+.tag.none {
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+/* 预售：紫色区分于「置灰」的琥珀与「下架」的红，避免一眼看上去像出了问题 */
+.tag.pre {
+    background: #ede9fe;
+    color: #6d28d9;
+}
+
+/* 起订量徽标：冷色，只表明这条有额外规则 */
+.tag.moq {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.empty {
+    padding: 40px;
+    text-align: center;
+    color: var(--muted);
+}
+
+/* 右栏 */
+.tabs {
+    display: flex;
+    gap: 6px;
+    /* 吸顶：.col 自带 overflow:auto，它就是 sticky 的滚动容器。
+       但滚动裁切发生在 padding box 上，只写 top:0 会留下容器那 12px 内边距，
+       滚动的字段会从按钮上方和两侧透出来；所以用负 margin 把内边距整块占过来，
+       再用等量 padding 补回按钮自己的呼吸空间，top 也上移同样距离，白底才能盖到面板内边。
+       .col 的 overflow 会连同 border-radius 一起裁切子元素，整块不会以方角探出圆角。*/
+    position: sticky;
+    top: -12px;
+    z-index: 5;
+    background: var(--panel);
+    margin: -12px -12px 2px;
+    padding: 12px 12px 10px;
+    border-bottom: 1px solid var(--line);
+}
+
+.tab {
+    flex: 1;
+}
+
+.tab.active {
+    background: var(--blue);
+    border-color: var(--blue);
+    color: #fff;
+    font-weight: 700;
+}
+
+.panel label {
+    display: block;
+    margin-bottom: 9px;
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.panel label>input,
+.panel label>select,
+.panel label>textarea {
+    margin-top: 3px;
+}
+
+.placeholder {
+    color: var(--muted);
+    font-size: 13px;
+    padding: 20px 0;
+    text-align: center;
+}
+
+.err {
+    color: var(--red);
+    font-size: 11px;
+    margin: -6px 0 8px;
+    min-height: 14px;
+}
+
+.row-btns {
+    display: flex;
+    gap: 6px;
+    margin: 6px 0 10px;
+    flex-wrap: wrap;
+}
+
+.radios label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text);
+    font-size: 12px;
+    margin-bottom: 6px;
+}
+
+.switch {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text);
+    font-size: 13px;
+}
+
+.preview {
+    height: 150px;
+    border: 1px dashed var(--line);
+    border-radius: 8px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fafafa;
+}
+
+.preview img {
+    max-width: 100%;
+    max-height: 148px;
+    object-fit: contain;
+}
+
+.grp {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 8px;
+    margin-bottom: 8px;
+    background: #fcfcfd;
+}
+
+.grp .head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.grp .head input {
+    font-weight: 700;
+}
+
+.grp .leaves {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 6px;
+}
+
+.leaf {
+    font-size: 11px;
+    background: #eef2ff;
+    border-radius: 999px;
+    padding: 2px 8px;
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.leaf button {
+    border: none;
+    background: none;
+    padding: 0 2px;
+    color: var(--red);
+    font-size: 12px;
+    line-height: 1;
+}
+
+.log {
+    white-space: pre-wrap;
+    word-break: break-all;
+    font-size: 11px;
+    background: #0f172a;
+    color: #cbd5e1;
+    padding: 10px;
+    border-radius: 8px;
+    max-height: 60vh;
+    overflow: auto;
+}
+
+/* 右键菜单与提示 */
+.ctx {
+    position: fixed;
+    z-index: 1000;
+    min-width: 190px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, .18);
+    padding: 4px;
+}
+
+.ctx div {
+    padding: 6px 10px;
+    font-size: 13px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.ctx div:hover {
+    background: #eff6ff;
+}
+
+.ctx hr {
+    border: none;
+    border-top: 1px solid var(--line);
+    margin: 4px 0;
+}
+
+.toast {
+    position: fixed;
+    left: 50%;
+    bottom: 26px;
+    transform: translateX(-50%);
+    background: #0f172a;
+    color: #fff;
+    padding: 9px 16px;
+    border-radius: 999px;
+    font-size: 13px;
+    z-index: 1200;
+    max-width: 80vw;
+}
+
+.toast.bad {
+    background: #b91c1c;
+}
+
+.toast.good {
+    background: #15803d;
+}
+
+/* 已被几个站点收录（产品库视图专用）*/
+.tag.lib-in {
+    background: #e0f2fe;
+    color: #0369a1;
+}
+
+/* 中栏顶部的成员入口 */
+.sitetools {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+/* 从产品库挑型号的弹窗：勾选式，带缩略图 */
+.modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, .45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1200;
+    padding: 24px;
+}
+
+.modal-box {
+    background: #fff;
+    border-radius: 12px;
+    width: min(760px, 100%);
+    max-height: 82vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 18px 48px rgba(15, 23, 42, .28);
+}
+
+.modal-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--line);
+}
+
+.modal-head b {
+    font-size: 13px;
+}
+
+.modal-head input[type=search] {
+    flex: 1;
+    margin: 0;
+}
+
+.modal-body {
+    overflow: auto;
+    padding: 6px 10px 12px;
+}
+
+.pick-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 5px 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.pick-row:hover {
+    background: #f8fafc;
+}
+
+.pick-row.on {
+    background: #eef4ff;
+}
+
+.pick-row input {
+    margin: 0;
+}
+
+.pick-row img {
+    width: 38px;
+    height: 38px;
+    object-fit: contain;
+    background: #0f172a;
+    border-radius: 6px;
+    flex: none;
+}
+
+.pick-id {
+    font-weight: 700;
+    min-width: 130px;
+}
+
+.pick-meta {
+    color: var(--muted);
+}
+
+@media (max-width: 1180px) {
+    .layout {
+        grid-template-columns: 200px minmax(0, 1fr);
+    }
+
+    .col.right {
+        grid-column: 1 / -1;
+    }
+}

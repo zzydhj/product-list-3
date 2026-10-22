@@ -1,0 +1,14 @@
+{
+    "name": "product-list-3",
+    "version": "1.0.0",
+    "private": true,
+    "description": "选款表与画册：一份产品库 + 多套静态页面，配一个本地可视化管理后台",
+    "scripts": {
+        "build": "node tools/build.mjs && node tools/check.mjs && node tools/publish.mjs",
+        "check": "node tools/check.mjs",
+        "serve": "node tools/serve.mjs"
+    },
+    "engines": {
+        "node": ">=18.18"
+    }
+}
