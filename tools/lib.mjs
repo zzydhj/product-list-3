@@ -26,6 +26,7 @@ export const REGION_SPECS = {
   PROMO: { kind: 'block', anchor: /^\s*const PROMO_CONFIG = \{$/, end: /^\s*\};$/ },
   WATERMARK: { kind: 'block', anchor: /^\s*const WATERMARK_CONFIG = \{$/, end: /^\s*\};$/ },
   DISABLED: { kind: 'line', anchor: /^(\s*)const DISABLED_PRODUCT_IDS = \[[^\]]*\];$/ },
+  SITEPATCH: { kind: 'block', anchor: /^\s*const SITE_PATCH = \{$/, end: /^\s*\};$/ },
   STORAGE: { kind: 'line', anchor: /^(\s*)const STORAGE_KEY = '[^']*';$/ },
 };
 
@@ -220,6 +221,9 @@ export function emitProducts(master, opts = {}) {
     // 本站覆盖过的字段合成一张「本站视图」，产品行就按这张视图发射：
     // 产品库里 form 写 normal、本站覆盖成 presale，页面上那一行就带 form: 'presale'
     const view = ov ? { ...p, ...ov } : p;
+    // patchMode（只给选款页）：行只写产品库默认值，本站差异集中到 SITE_PATCH 区。
+    // 可见性仍按 view 算，所以哪些行存在、注释掉哪些行与现在逐字一致。
+    const rowSrc = opts.patchMode ? p : view;
     if (opts.filterToGroups && !opts.leafSet.has(p.category)) continue;
     const commented = opts.surface === 'catalog' ? catalogOut(p, opts) : view.form === 'hidden';
     const notes = p.notes || [];
@@ -230,7 +234,7 @@ export function emitProducts(master, opts = {}) {
       // 画册没有分节注释，靠分类切换处空一行保持可读（按排好的顺序看上一个）
       if (emittedAny) out.push('');
     }
-    out.push(emitProductLine(view, indent, commented));
+    out.push(emitProductLine(rowSrc, indent, commented));
     emittedAny = true;
   }
   return out;
@@ -278,7 +282,61 @@ export function siteProductsOpts(site, master, owner) {
     overrides: src.overrides || {},
     order: Array.isArray(src.order) ? src.order : null,
     catalogOff: isCatalog && src.catalogOff ? new Set(src.catalogOff) : null,
+    // 选款页把本站差异集中到 SITE_PATCH 区；画册页不引入新区：它只列型号与图，代码从不读 form / moq
+    //（已核对：画册页里这两个字段只出现在数据行上），给它的模板加运行时合并属于改成品页，不在这一步里
+    patchMode: !isCatalog,
   };
+}
+
+/**
+ * 本站需要打进 SITE_PATCH 的差异。发射与校验共用这一个函数，两处算不出同一个结果就会被门禁拦住。
+ * 判定必须与 emitProductLine 用同一把尺：
+ * 那一行只会写 form: 'presale'，disabled / hidden 从不进产品行（各自走 DISABLED 区与整行注释），
+ * 所以 patch 也只需在「预售与否翻了面」时记一笔 —— 多记一个 disabled 就是造一种
+ * 现有产物里从来不存在的形状，等价性证明会当场对不上。
+ * 反向也要记：产品库是预售、本站改回正常时，行里带着 form: 'presale'，
+ * 全靠这一笔把它撤掉，否则本站撤不动预售。
+ */
+export function sitePatchOf(master, opts = {}) {
+  const out = {};
+  for (const [id, ov] of Object.entries(opts.overrides || {})) {
+    const p = master.find((x) => x.id === id);
+    if (!p) continue;
+    const e = {};
+    if (ov.form !== undefined && (ov.form === 'presale') !== (p.form === 'presale')) e.form = ov.form;
+    if (ov.moq !== undefined && moqOf(ov.moq) !== moqOf(p.moq)) e.moq = ov.moq;
+    if (Object.keys(e).length) out[id] = e;
+  }
+  return out;
+}
+
+/** 发射 SITE_PATCH 区：一个型号一行，按产品库顺序排，免得顺序来回跳看不出改了啥 */
+export function emitSitePatch(patch, master, indent = '            ') {
+  const ids = master.map((p) => p.id).filter((id) => patch[id]);
+  for (const id of Object.keys(patch)) if (!ids.includes(id)) ids.push(id);
+  if (!ids.length) return [`${indent}const SITE_PATCH = {`, `${indent}};`];
+  return [
+    `${indent}const SITE_PATCH = {`,
+    ...ids.map((id) => `${indent}    '${id}': { ${Object.entries(patch[id]).map(([k, v]) => `${k}: ${JSON.stringify(v).replace(/"/g, "'")}`).join(', ')} },`),
+    `${indent}};`,
+  ];
+}
+
+/** 读回页面里的 SITE_PATCH 区（校验与重灌都用它） */
+export function parseSitePatch(content) {
+  const out = {};
+  for (const raw of content) {
+    const m = /^\s*'((?:[^'\\]|\\.)*)':\s*\{([^}]*)\},?\s*$/.exec(raw);
+    if (!m) continue;
+    const e = {};
+    // 两个分支各自一个捕获组：写 `Number(kv[2])` 的话数字分支拿到的是「字符串那组」（undefined），
+    // 结果是每个数字都读成 NaN —— 不报错，只是静默变成「没设起订量」。
+    for (const kv of m[2].matchAll(/(\w+):\s*(?:'([^']*)'|(-?[\d.]+))/g)) {
+      e[kv[1]] = kv[2] !== undefined ? kv[2] : Number(kv[3]);
+    }
+    out[m[1]] = e;
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------- 配置区解析 / 发射

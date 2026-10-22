@@ -8,8 +8,10 @@
     <title>Selection and Order Form</title>
     <!-- GEN:TITLE END -->
 
-    <!-- 站点图标：使用根目录 /favicon.svg（SVG 自适应缩放，card-holder 与 TPU 共用同一份） -->
+    <!-- 站点图标：SVG 优先、PNG 兜底（Safari / iOS 对 SVG favicon 的支持历来不稳），三份文件都在仓库与 dist 根目录 -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 
     <!-- 引入 Tailwind：已改为本地静态 CSS（方案 1），不再依赖运行时 CDN。
          样式表在 </head> 前引入，以保持与原 Play CDN 注入顺序一致的层叠关系，见文件末尾。 -->
@@ -1149,8 +1151,8 @@
             { id: 'TAG076-D', category: 'TAG Single Panel No Glitter', name: 'TAG076-D', image: 'https://hande.zzydhj.com/hande/HY076-D.jpg' },
             { id: 'TAG077-D', category: 'TAG Single Panel No Glitter', name: 'TAG077-D', image: 'https://hande.zzydhj.com/hande/HY077-D.jpg' },
             { id: 'HY019-A', category: 'PSA Glossy Finish No Plate', name: 'HY019-A', image: 'https://hande.zzydhj.com/hande/HY019-A.jpg' },
-            { id: 'HY016-A', category: 'PSA Glossy Finish No Plate', name: 'HY016-A', image: 'https://hande.zzydhj.com/hande/HY016-A.jpg', form: 'presale' },
-            { id: 'HY003-A', category: 'PSA Glossy Finish No Plate', name: 'HY003-A', image: 'https://hande.zzydhj.com/hande/HY003-A.jpg', form: 'presale' },
+            { id: 'HY016-A', category: 'PSA Glossy Finish No Plate', name: 'HY016-A', image: 'https://hande.zzydhj.com/hande/HY016-A.jpg' },
+            { id: 'HY003-A', category: 'PSA Glossy Finish No Plate', name: 'HY003-A', image: 'https://hande.zzydhj.com/hande/HY003-A.jpg' },
             /* GEN:PRODUCTS END */
         ];
 
@@ -1176,10 +1178,24 @@
             return parseInt(document.getElementById(`input-${id}`).value) || 0;
         }
 
+        // ================= 本站差异（SITE_PATCH）=================
+        // 上方产品行只写产品库默认值；本站设的起订量 / 预售状态集中在下面这一块。
+        // 改任何型号的本站状态只动这一块，几百行产品一个字都不动。
+        /* GEN:SITEPATCH BEGIN 此区块由生成工具托管，请勿手改 */
+        const SITE_PATCH = {
+            'HY016-A': { form: 'presale' },
+            'HY003-A': { form: 'presale' },
+        };
+        /* GEN:SITEPATCH END */
+        // 合并必须赶在 preSaleSet / moqOf 之前：它们都是靠 products 字段建集合的，
+        // 晚一步本站的预售与起订量就会静默失效（不报错，只是当没设过）。
+        for (const p of products) Object.assign(p, SITE_PATCH[p.id] || {});
+
         // ================= 数量规则：正整数、起订量、预售 =================
-        // 起订量和预售状态就写在每个产品那一行里（moq / form），所以这里直接从 products 读，
-        // 不再另开一张配置表。预售型号的数量框显示 Pre Sale 且不可填，与置灰共用同一条
-        // 「数量恒为 0」的通道：统计、本地暂存、导出天然排除它们，历史缓存里的脏值也绕不过去。
+        // 起订量与预售的本站差异在上面的 SITE_PATCH 里，页面初始化时已合并进 products，
+        // 所以这里仍直接从 products 读，不另开一张配置表。预售型号的数量框显示 Pre Sale
+        // 且不可填，与置灰共用同一条「数量恒为 0」的通道：统计、本地暂存、导出天然排除它们，
+        // 历史缓存里的脏值也绕不过去。
         const preSaleSet = new Set(products.filter(p => p.form === 'presale').map(p => p.id));
         function isPreSale(id) { return preSaleSet.has(id); }
         function isNoQty(id) { return disabledIdSet.has(id) || isPreSale(id); }

@@ -146,6 +146,35 @@ const WHITELIST = [
       'if (isNoQty(id)) return; // 同上，且不把填不进去的数量写进暂存与统计',
     ],
   },
+  {
+    // 2026-10-22 你要求给网站配一个合适的 favicon。选款页原本只声明了 SVG 一种，
+    // 而 Safari / iOS 对 SVG favicon 的支持历来不稳，所以补上 PNG 兜底与 iPhone 主屏图标；
+    // 旧那句注释说「card-holder 与 TPU 共用同一份」，现在四页共用，换成新的说法。
+    id: 'P9',
+    why: '选款页补 PNG 兜底与 apple-touch-icon，并把那句只描述两页的旧注释换成统一说法',
+    sites: ['card-holder', 'TPU'],
+    del: ['<!-- 站点图标：使用根目录 /favicon.svg（SVG 自适应缩放，card-holder 与 TPU 共用同一份） -->'],
+    add: ['<!-- 站点图标：SVG 优先、PNG 兜底（Safari / iOS 对 SVG favicon 的支持历来不稳），三份文件都在仓库与 dist 根目录 -->'],
+    blockAdd: { start: '<link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">', end: '<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">' },
+  },
+  {
+    // 两本画册原本一行图标声明都没有：浏览器只会去要 /favicon.ico，拿不到就显示默认地球图标。
+    id: 'P10',
+    why: '画册页补上与其他两页完全相同的站点图标声明（原先整块缺失）',
+    sites: ['catalog', 'catalog-tpu'],
+    blockAdd: { start: '<!-- 站点图标：SVG 优先、PNG 兜底（Safari / iOS 对 SVG favicon 的支持历来不稳），三份文件都在仓库与 dist 根目录 -->', end: '<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">' },
+  },
+  {
+    // 2026-10-22 你要求「改一个型号不该把整个文件重写」。产品行从此只写产品库默认值，
+    // 本站差异（预售 / 起订量）集中进 SITEPATCH 托管区，页面初始化时合回 products。
+    // 整块登记：stripComments 只剥 /* */ 块注释，行注释会作为净内容留下来（P4 就踩过这一次），
+    // 所以那五行说明注释也得算在内。块里包含托管区被占位符顶掉的那一行。
+    // 合并那句必须排在 preSaleSet / moqOf 之前，否则本站的预售与起订量会静默失效。
+    id: 'P11',
+    why: '选款页改为运行时合并本站差异（产品行只写产品库默认值，日常改状态只动 SITEPATCH 那一块）',
+    sites: ['card-holder', 'TPU'],
+    blockAdd: { start: '// ================= 本站差异（SITE_PATCH）=================', end: 'for (const p of products) Object.assign(p, SITE_PATCH[p.id] || {});' },
+  },
 ];
 
 const PH = '@@GEN@@';

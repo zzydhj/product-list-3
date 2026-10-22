@@ -15,6 +15,7 @@ import {
   ROOT, TOOLS, readFileLines, writeFileLines, locateRegion, regionContent,
   ensureMarkers, indentOf,
   emitProducts, emitGroupMap, emitPromo, emitDisabled, emitStorage, emitWatermark,
+  emitSitePatch, sitePatchOf,
   emitTitle, parseTitle,
   parseGroupMap, parseJsObjectBlock, parseProducts, groupLeafNames, effectiveIds, siteProductsOpts,
   validate, normalizeCfg,
@@ -211,6 +212,21 @@ for (const site of sites) {
     const content = pick(site.raw && site.raw.DISABLED, (base) => sameSet(idsFromLine(base), ids), canonical);
     changes.push(['DISABLED', orig, content]);
     cur = replaceBetween(cur, loc, content);
+  }
+
+  // ---- SITEPATCH（只有选款页有：产品行只写产品库默认值，本站差异集中到这一块）
+  // 发射经 sitePatchOf，与页面运行时的 Object.assign 是同一张表：两边算法不同的话，
+  // 页面上看的与产品库定的就会两套口径，而这不会报错，只会默默算错。
+  if (site.type === 'form') {
+    const at = regionAt(cur, 'SITEPATCH');
+    cur = at.lines;
+    const loc = at.loc;
+    const orig = regionContent(cur, loc);
+    const opts = siteProductsOpts(site, products);
+    const canonical = emitSitePatch(sitePatchOf(products, opts), products,
+      indentOf(cur[loc.begin + 1]) || '        ');
+    changes.push(['SITEPATCH', orig, canonical]);
+    cur = replaceBetween(cur, loc, canonical);
   }
 
   // ---- STORAGE

@@ -48,7 +48,8 @@ for (const s of sites) {
   put(`${dir}/tailwind.css`);               // 该页自己的样式副本（HTML 用相对路径引用）
   put(`${dir}/vendor`);                     // Font Awesome 字体
 }
-for (const rel of ['_redirects', 'favicon.svg']) put(rel);
+// 根级静态资源：页面里用绝对路径引它们，必须与页面同层放进 dist
+for (const rel of ['_redirects', 'favicon.svg', 'favicon.png', 'apple-touch-icon.png']) put(rel);
 
 // ---------------------------------------------------------------- 3) 自检：dist 里不该有任何后台痕迹
 

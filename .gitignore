@@ -10,6 +10,11 @@ tools/last-build.json
 
 # 本地验证时拍的管理界面截图（不是站点资源，也不进部署目录）
 /*.png
+# 但站点图标是页面里真在引的资源，必须进仓库、必须进 dist：
+# 不反向放行的话，本机能看到的 /favicon.png 与 /apple-touch-icon.png 在线上会直接 404
+#（publish 对缺文件只打「[提示]」不拦，所以这种漏不会报错，只会静默少东西）
+!/favicon.png
+!/apple-touch-icon.png
 
 # 依赖与系统文件
 node_modules/

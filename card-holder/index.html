@@ -8,8 +8,10 @@
     <title>Selection and Order Form</title>
     <!-- GEN:TITLE END -->
 
-    <!-- 站点图标：使用根目录 /favicon.svg（SVG 自适应缩放，card-holder 与 TPU 共用同一份） -->
+    <!-- 站点图标：SVG 优先、PNG 兜底（Safari / iOS 对 SVG favicon 的支持历来不稳），三份文件都在仓库与 dist 根目录 -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 
     <!-- 引入 Tailwind：已改为本地静态 CSS（方案 1），不再依赖运行时 CDN。
          样式表在 </head> 前引入，以保持与原 Play CDN 注入顺序一致的层叠关系，见文件末尾。 -->
@@ -1189,8 +1191,8 @@
             { id: '绿色361C+蓝色295C', category: 'PSA 2 Color Silicone Bumper', name: '绿色361C+蓝色295C', image: 'https://hande.zzydhj.com/hande/%E7%BB%BF%E8%89%B2361C%2B%E8%93%9D%E8%89%B2295C.jpg' },
             { id: '墨绿色5605C+黑色', category: 'PSA 2 Color Silicone Bumper', name: '墨绿色5605C+黑色', image: 'https://hande.zzydhj.com/hande/%E5%A2%A8%E7%BB%BF%E8%89%B25605C%2B%E9%BB%91%E8%89%B2.jpg' },
             { id: 'HY019-A', category: 'PSA Glossy Finish No Plate', name: 'HY019-A', image: 'https://hande.zzydhj.com/hande/HY019-A.jpg' },
-            { id: 'HY016-A', category: 'PSA Glossy Finish No Plate', name: 'HY016-A', image: 'https://hande.zzydhj.com/hande/HY016-A.jpg', form: 'presale' },
-            { id: 'HY003-A', category: 'PSA Glossy Finish No Plate', name: 'HY003-A', image: 'https://hande.zzydhj.com/hande/HY003-A.jpg', form: 'presale' },
+            { id: 'HY016-A', category: 'PSA Glossy Finish No Plate', name: 'HY016-A', image: 'https://hande.zzydhj.com/hande/HY016-A.jpg' },
+            { id: 'HY003-A', category: 'PSA Glossy Finish No Plate', name: 'HY003-A', image: 'https://hande.zzydhj.com/hande/HY003-A.jpg' },
             { id: 'ALL-A', category: 'PSA Alu Speckled', name: 'ALL-A', image: 'https://hande.zzydhj.com/hande/ALL-A.jpg' },
             { id: '渐变蓝黄飘花A-1', category: 'PSA Alu Speckled', name: 'A-1', image: 'https://hande.zzydhj.com/hande/A-1.jpg' },
             { id: '渐变黑金飘花A-2', category: 'PSA Alu Speckled', name: 'A-2', image: 'https://hande.zzydhj.com/hande/A-2.jpg' },
@@ -1322,29 +1324,29 @@
             { id: '柠檬黄BGS-D-16', category: 'BGS Alu Single Color', name: 'BGS-D-16', image: 'https://hande.zzydhj.com/hande/D-16.jpg' },
             { id: '金色BGS-D-17', category: 'BGS Alu Single Color', name: 'BGS-D-17', image: 'https://hande.zzydhj.com/hande/D-17.jpg' },
             { id: '浅蓝BGS-D-18', category: 'BGS Alu Single Color', name: 'BGS-D-18', image: 'https://hande.zzydhj.com/hande/D-18.jpg' },
-            { id: 'For-PSA', category: 'Acrylic display box', name: 'For-PSA', image: 'https://hande.zzydhj.com/hande/ac-psa.jpg', moq: 50 },
-            { id: 'For-BGS', category: 'Acrylic display box', name: 'For-BGS', image: 'https://hande.zzydhj.com/hande/ac-bgs.jpg', moq: 50 },
-            { id: 'For-PSA-Red', category: 'Acrylic display box', name: 'For-PSA-Red', image: 'https://hande.zzydhj.com/hande/ac-psa-red.jpg', moq: 50 },
-            { id: 'For-PSA-Yellow', category: 'Acrylic display box', name: 'For-PSA-Yellow', image: 'https://hande.zzydhj.com/hande/ac-psa-yellow.jpg', moq: 50 },
-            { id: 'For-PSA-Blue', category: 'Acrylic display box', name: 'For-PSA-Blue', image: 'https://hande.zzydhj.com/hande/ac-psa-blue.jpg', moq: 50 },
-            { id: '3 for PSA', category: 'Acrylic display box', name: '3 for PSA', image: 'https://hande.zzydhj.com/hande/3-for-PSA.jpg', moq: 50 },
-            { id: '3 For Metal PSA Slab', category: 'Acrylic display box', name: '3 For Metal PSA Slab', image: 'https://hande.zzydhj.com/hande/3-For-Metal-PSA-Slab.jpg', moq: 50 },
-            { id: 'For-PSA-Slab', category: 'Acrylic display box', name: 'For-PSA-Slab', image: 'https://hande.zzydhj.com/hande/ac-psa-slab.jpg', moq: 50 },
-            { id: 'For-BGS-Slab', category: 'Acrylic display box', name: 'For-BGS-Slab', image: 'https://hande.zzydhj.com/hande/ac-bgs-slab.jpg', moq: 50 },
-            { id: 'Booster-Box-(5mm)', category: 'Acrylic Booster Box Case', name: 'Booster-Box-(5mm)', image: 'https://hande.zzydhj.com/hande/Booster-Box-(5mm).jpg', moq: 50 },
-            { id: 'Booster-Bundle&Build-(5mm)', category: 'Acrylic Booster Box Case', name: 'Booster-Bundle&Build-(5mm)', image: 'https://hande.zzydhj.com/hande/Booster-Bundle&Build-(5mm).jpg', moq: 50 },
-            { id: 'PTCG-ETB-(5mm+8mm)', category: 'Acrylic Booster Box Case', name: 'PTCG-ETB-(5mm+8mm)', image: 'https://hande.zzydhj.com/hande/PTCG-ETB-(5mm+8mm).jpg', moq: 50 },
-            { id: 'Japanese-Booster-(5mm)', category: 'Acrylic Booster Box Case', name: 'Japanese-Booster-(5mm)', image: 'https://hande.zzydhj.com/hande/Japanese-Booster-(5mm).jpg', moq: 50 },
-            { id: 'Japanese-standard-(5mm)', category: 'Acrylic Booster Box Case', name: 'Japanese-standard-(5mm)', image: 'https://hande.zzydhj.com/hande/Japanese-standard-(5mm).jpg', moq: 50 },
-            { id: 'PTCG-151-UPC-(5mm+8mm)', category: 'Acrylic Booster Box Case', name: 'PTCG-151-UPC-(5mm+8mm)', image: 'https://hande.zzydhj.com/hande/PTCG-151-UPC-(5mm+8mm).jpg', moq: 50 },
-            { id: 'Center-ETB-(5mm)', category: 'Acrylic Booster Box Case', name: 'Center-ETB-(5mm)', image: 'https://hande.zzydhj.com/hande/Center-ETB-(5mm).jpg', moq: 50 },
-            { id: 'PTCG-Mario-Pikachu-(5mm)', category: 'Acrylic Booster Box Case', name: 'PTCG-Mario-Pikachu-(5mm)', image: 'https://hande.zzydhj.com/hande/PTCG-Mario-Pikachu-(5mm).jpg', moq: 50 },
-            { id: 'PTCG-SPC-(5mm+8mm)', category: 'Acrylic Booster Box Case', name: 'PTCG-SPC-(5mm+8mm).jpg', image: 'https://hande.zzydhj.com/hande/PTCG-SPC-(5mm+8mm).jpg', moq: 50 },
-            { id: 'Blooming-Water-(5mm+8mm)', category: 'Acrylic Booster Box Case', name: 'Blooming-Water-(5mm+8mm)', image: 'https://hande.zzydhj.com/hande/Blooming-Water-(5mm+8mm).jpg', moq: 50 },
-            { id: '151-Booster-Bundle-Display-(5mm+8mm)', category: 'Acrylic Booster Box Case', name: '151-Booster-Bundle-Display-(5mm+8mm)', image: 'https://hande.zzydhj.com/hande/151-Booster-Bundle-Display-(5mm+8mm).jpg', moq: 50 },
-            { id: 'PTCG-Mega-Brave-(5mm+8mm)', category: 'Acrylic Booster Box Case', name: 'PTCG-Mega-Brave-(5mm+8mm)', image: 'https://hande.zzydhj.com/hande/PTCG-Mega-Brave-(5mm+8mm).jpg', moq: 50 },
-            { id: 'Booster-Acrylic-Case', category: 'Acrylic Booster Box Case', name: 'Booster-Acrylic-Case', image: 'https://hande.zzydhj.com/hande/Booster-Box-Acrylic-Case.jpg', moq: 50 },
-            { id: 'ETB-Acrylic-Case', category: 'Acrylic Booster Box Case', name: 'ETB-Acrylic-Case', image: 'https://hande.zzydhj.com/hande/ETB-Acrylic-Case.jpg', moq: 50 },
+            { id: 'For-PSA', category: 'Acrylic display box', name: 'For-PSA', image: 'https://hande.zzydhj.com/hande/ac-psa.jpg' },
+            { id: 'For-BGS', category: 'Acrylic display box', name: 'For-BGS', image: 'https://hande.zzydhj.com/hande/ac-bgs.jpg' },
+            { id: 'For-PSA-Red', category: 'Acrylic display box', name: 'For-PSA-Red', image: 'https://hande.zzydhj.com/hande/ac-psa-red.jpg' },
+            { id: 'For-PSA-Yellow', category: 'Acrylic display box', name: 'For-PSA-Yellow', image: 'https://hande.zzydhj.com/hande/ac-psa-yellow.jpg' },
+            { id: 'For-PSA-Blue', category: 'Acrylic display box', name: 'For-PSA-Blue', image: 'https://hande.zzydhj.com/hande/ac-psa-blue.jpg' },
+            { id: '3 for PSA', category: 'Acrylic display box', name: '3 for PSA', image: 'https://hande.zzydhj.com/hande/3-for-PSA.jpg' },
+            { id: '3 For Metal PSA Slab', category: 'Acrylic display box', name: '3 For Metal PSA Slab', image: 'https://hande.zzydhj.com/hande/3-For-Metal-PSA-Slab.jpg' },
+            { id: 'For-PSA-Slab', category: 'Acrylic display box', name: 'For-PSA-Slab', image: 'https://hande.zzydhj.com/hande/ac-psa-slab.jpg' },
+            { id: 'For-BGS-Slab', category: 'Acrylic display box', name: 'For-BGS-Slab', image: 'https://hande.zzydhj.com/hande/ac-bgs-slab.jpg' },
+            { id: 'Booster-Box-(5mm)', category: 'Acrylic Booster Box Case', name: 'Booster-Box-(5mm)', image: 'https://hande.zzydhj.com/hande/Booster-Box-(5mm).jpg' },
+            { id: 'Booster-Bundle&Build-(5mm)', category: 'Acrylic Booster Box Case', name: 'Booster-Bundle&Build-(5mm)', image: 'https://hande.zzydhj.com/hande/Booster-Bundle&Build-(5mm).jpg' },
+            { id: 'PTCG-ETB-(5mm+8mm)', category: 'Acrylic Booster Box Case', name: 'PTCG-ETB-(5mm+8mm)', image: 'https://hande.zzydhj.com/hande/PTCG-ETB-(5mm+8mm).jpg' },
+            { id: 'Japanese-Booster-(5mm)', category: 'Acrylic Booster Box Case', name: 'Japanese-Booster-(5mm)', image: 'https://hande.zzydhj.com/hande/Japanese-Booster-(5mm).jpg' },
+            { id: 'Japanese-standard-(5mm)', category: 'Acrylic Booster Box Case', name: 'Japanese-standard-(5mm)', image: 'https://hande.zzydhj.com/hande/Japanese-standard-(5mm).jpg' },
+            { id: 'PTCG-151-UPC-(5mm+8mm)', category: 'Acrylic Booster Box Case', name: 'PTCG-151-UPC-(5mm+8mm)', image: 'https://hande.zzydhj.com/hande/PTCG-151-UPC-(5mm+8mm).jpg' },
+            { id: 'Center-ETB-(5mm)', category: 'Acrylic Booster Box Case', name: 'Center-ETB-(5mm)', image: 'https://hande.zzydhj.com/hande/Center-ETB-(5mm).jpg' },
+            { id: 'PTCG-Mario-Pikachu-(5mm)', category: 'Acrylic Booster Box Case', name: 'PTCG-Mario-Pikachu-(5mm)', image: 'https://hande.zzydhj.com/hande/PTCG-Mario-Pikachu-(5mm).jpg' },
+            { id: 'PTCG-SPC-(5mm+8mm)', category: 'Acrylic Booster Box Case', name: 'PTCG-SPC-(5mm+8mm).jpg', image: 'https://hande.zzydhj.com/hande/PTCG-SPC-(5mm+8mm).jpg' },
+            { id: 'Blooming-Water-(5mm+8mm)', category: 'Acrylic Booster Box Case', name: 'Blooming-Water-(5mm+8mm)', image: 'https://hande.zzydhj.com/hande/Blooming-Water-(5mm+8mm).jpg' },
+            { id: '151-Booster-Bundle-Display-(5mm+8mm)', category: 'Acrylic Booster Box Case', name: '151-Booster-Bundle-Display-(5mm+8mm)', image: 'https://hande.zzydhj.com/hande/151-Booster-Bundle-Display-(5mm+8mm).jpg' },
+            { id: 'PTCG-Mega-Brave-(5mm+8mm)', category: 'Acrylic Booster Box Case', name: 'PTCG-Mega-Brave-(5mm+8mm)', image: 'https://hande.zzydhj.com/hande/PTCG-Mega-Brave-(5mm+8mm).jpg' },
+            { id: 'Booster-Acrylic-Case', category: 'Acrylic Booster Box Case', name: 'Booster-Acrylic-Case', image: 'https://hande.zzydhj.com/hande/Booster-Box-Acrylic-Case.jpg' },
+            { id: 'ETB-Acrylic-Case', category: 'Acrylic Booster Box Case', name: 'ETB-Acrylic-Case', image: 'https://hande.zzydhj.com/hande/ETB-Acrylic-Case.jpg' },
             { id: '4-Pocket-PP-Binder-(Blue)', category: '4 Pocket PP Card Binder', name: '4-Pocket-PP-Binder-(Blue)', image: 'https://hande.zzydhj.com/hande/4-Pocket-PP-Binder-(Blue).jpg' },
             { id: '4-Pocket-PP-Binder-(Black)', category: '4 Pocket PP Card Binder', name: '4-Pocket-PP-Binder-(Black)', image: 'https://hande.zzydhj.com/hande/4-Pocket-PP-Binder-(Black).jpg' },
             { id: '4-Pocket-PP-Binder-(Green)', category: '4 Pocket PP Card Binder', name: '4-Pocket-PP-Binder-(Green)', image: 'https://hande.zzydhj.com/hande/4-Pocket-PP-Binder-(Green).jpg' },
@@ -1413,10 +1415,47 @@
             return parseInt(document.getElementById(`input-${id}`).value) || 0;
         }
 
+        // ================= 本站差异（SITE_PATCH）=================
+        // 上方产品行只写产品库默认值；本站设的起订量 / 预售状态集中在下面这一块。
+        // 改任何型号的本站状态只动这一块，几百行产品一个字都不动。
+        /* GEN:SITEPATCH BEGIN 此区块由生成工具托管，请勿手改 */
+        const SITE_PATCH = {
+            'HY016-A': { form: 'presale' },
+            'HY003-A': { form: 'presale' },
+            'For-PSA': { moq: 50 },
+            'For-BGS': { moq: 50 },
+            'For-PSA-Red': { moq: 50 },
+            'For-PSA-Yellow': { moq: 50 },
+            'For-PSA-Blue': { moq: 50 },
+            '3 for PSA': { moq: 50 },
+            '3 For Metal PSA Slab': { moq: 50 },
+            'For-PSA-Slab': { moq: 50 },
+            'For-BGS-Slab': { moq: 50 },
+            'Booster-Box-(5mm)': { moq: 50 },
+            'Booster-Bundle&Build-(5mm)': { moq: 50 },
+            'PTCG-ETB-(5mm+8mm)': { moq: 50 },
+            'Japanese-Booster-(5mm)': { moq: 50 },
+            'Japanese-standard-(5mm)': { moq: 50 },
+            'PTCG-151-UPC-(5mm+8mm)': { moq: 50 },
+            'Center-ETB-(5mm)': { moq: 50 },
+            'PTCG-Mario-Pikachu-(5mm)': { moq: 50 },
+            'PTCG-SPC-(5mm+8mm)': { moq: 50 },
+            'Blooming-Water-(5mm+8mm)': { moq: 50 },
+            '151-Booster-Bundle-Display-(5mm+8mm)': { moq: 50 },
+            'PTCG-Mega-Brave-(5mm+8mm)': { moq: 50 },
+            'Booster-Acrylic-Case': { moq: 50 },
+            'ETB-Acrylic-Case': { moq: 50 },
+        };
+        /* GEN:SITEPATCH END */
+        // 合并必须赶在 preSaleSet / moqOf 之前：它们都是靠 products 字段建集合的，
+        // 晚一步本站的预售与起订量就会静默失效（不报错，只是当没设过）。
+        for (const p of products) Object.assign(p, SITE_PATCH[p.id] || {});
+
         // ================= 数量规则：正整数、起订量、预售 =================
-        // 起订量和预售状态就写在每个产品那一行里（moq / form），所以这里直接从 products 读，
-        // 不再另开一张配置表。预售型号的数量框显示 Pre Sale 且不可填，与置灰共用同一条
-        // 「数量恒为 0」的通道：统计、本地暂存、导出天然排除它们，历史缓存里的脏值也绕不过去。
+        // 起订量与预售的本站差异在上面的 SITE_PATCH 里，页面初始化时已合并进 products，
+        // 所以这里仍直接从 products 读，不另开一张配置表。预售型号的数量框显示 Pre Sale
+        // 且不可填，与置灰共用同一条「数量恒为 0」的通道：统计、本地暂存、导出天然排除它们，
+        // 历史缓存里的脏值也绕不过去。
         const preSaleSet = new Set(products.filter(p => p.form === 'presale').map(p => p.id));
         function isPreSale(id) { return preSaleSet.has(id); }
         function isNoQty(id) { return disabledIdSet.has(id) || isPreSale(id); }

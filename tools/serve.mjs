@@ -298,6 +298,13 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    // ---------------- 站点图标
+    // 四个页面里写的是绝对根路径（与线上 dist 根目录同构），本地也照同一个路径给，
+    // 否则会变成「线上有图标、本地预览永远缺一个」，而这种差异没人会去查。
+    if (/^\/(favicon\.svg|favicon\.png|apple-touch-icon\.png)$/.test(p)) {
+      return serveStatic(ROOT, p.slice(1), res);
+    }
+
     // ---------------- 预览成品页面
     if (p.startsWith('/preview/')) return serveStatic(ROOT, p.slice('/preview/'.length), res, { live: true });
 
