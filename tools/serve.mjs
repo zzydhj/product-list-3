@@ -9,6 +9,7 @@
 //   /api/state        POST 校验 + 备份 + 写盘 + 调用生成器
 //   /api/build        POST 只重新生成成品页面
 //   /api/check        POST 跑 tools/check.mjs，返回回归校验结果
+//   /api/anchors      POST 采纳人工基线（回写 tools/anchors.json）并重跑生成→校验→打包
 //   /api/images       POST 批量 HEAD 检测图片可达性
 //   /api/backups      GET  列出 products.json 的历史备份
 //   /api/restore      POST 回滚到指定备份
@@ -161,6 +162,15 @@ function serveStatic(base, relPath, res, opts = {}) {
   send(res, 200, fs.readFileSync(p), type);
 }
 
+/** check.mjs --json 的输出 = 人读文本 + '===JSON===' + 机器读报告：两边都要，跑一次就够 */
+function splitCheck(out) {
+  const i = out.indexOf('===JSON===');
+  if (i < 0) return { human: out, report: null };
+  try {
+    return { human: out.slice(0, i).trimEnd(), report: JSON.parse(out.slice(i + '===JSON==='.length).trim()) };
+  } catch { return { human: out.slice(0, i).trimEnd(), report: null }; }
+}
+
 /**
  * 一步到位：生成页面 → 回归校验 → 组装交付包 dist/。
  * 三段串行且后两段以前一段成功为前提：
@@ -172,7 +182,8 @@ function serveStatic(base, relPath, res, opts = {}) {
  */
 function generateAndPack(buildArgs = []) {
   const b = run('build.mjs', buildArgs);
-  const c = run('check.mjs');
+  const c = run('check.mjs', ['--json']);
+  const { human, report } = splitCheck(c.out);
   const pagesOk = b.code === 0 && c.code === 0;
   const p = pagesOk ? run('publish.mjs') : null;
   return {
@@ -181,8 +192,11 @@ function generateAndPack(buildArgs = []) {
     checkCode: c.code,
     publishCode: p ? p.code : null,
     build: b.out,
-    check: c.out,
+    check: human,
     publish: p ? p.out : '（回归校验未通过，dist 保持上一个版本）',
+    // 只卡在人工基线（主数据独立复算与产物都自洽）时，让前端弹一次确认去采纳，
+    // 而不是丢一句「去改 tools/check.mjs」给一个不该碰源码的人
+    anchorPrompt: (b.code === 0 && c.code !== 0 && report && report.anchorOnly) ? report.anchorFix : null,
     stale: staleCode(),
   };
 }
@@ -222,6 +236,15 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/check' && req.method === 'POST') {
       const c = run('check.mjs');
       return send(res, 200, { code: c.code, out: c.out });
+    }
+    if (p === '/api/anchors' && req.method === 'POST') {
+      // 采纳人工基线：先让 check --adopt 回写 anchors.json（它自己会拒绝在非基线失败上采纳），
+      // 成功后重跑一遍生成→校验→打包，让 dist 与刚采纳的数字对齐。
+      const body = await readBody(req);
+      const reason = String(body.reason || '').slice(0, 200) || '（未注明原因）';
+      const a = run('check.mjs', ['--adopt', '--reason', reason]);
+      if (a.code !== 0) return send(res, 200, { adopted: false, ok: false, out: a.out });
+      return send(res, 200, { adopted: true, out: a.out, ...generateAndPack() });
     }
     if (p === '/api/images' && req.method === 'POST') {
       const body = await readBody(req);

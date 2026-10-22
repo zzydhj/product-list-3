@@ -1191,17 +1191,70 @@ function addProduct() {
 
 async function save() {
   try {
+    const prev = snapshotIds();   // 记住改动前的名单：万一要采纳基线，靠它说清「这次做了什么」
     // 发出去之前统一整成固定键序：磁盘上的 products.json 才不会因为条目来源不同而整体重排
     const r = await api('/api/state', { products: S.products.map(canon), sites: S.sites });
     printLog(threeStage(r));
     S.saved = serialize();          // 数据已落盘，内存与磁盘一致，dirty 该消
     syncBars();
-    const bad = resultNote(r);
+    let bad = resultNote(r);
+    // 只卡在人工基线：不是出事了，是问你一句。弹一次确认，点完就继续，不用人碰源码
+    if (bad && r.anchorPrompt && r.anchorPrompt.length) bad = await adoptAnchors(r, prev);
     toast(bad || '已保存，dist 交付包也一起更新了', bad ? 'bad' : 'good');
   } catch (e) {
     printLog(e.message + '\n' + JSON.stringify(e.data?.errors || e.data, null, 2));
     toast('保存被拒绝：数据有问题，见日志', 'bad');
   }
+}
+
+/** 改动前的型号名单与各站成员名单（浅拷贝，只用于事后算差异） */
+function snapshotIds() {
+  return {
+    products: S.products.map((p) => p.id),
+    members: Object.fromEntries(S.sites.map((s) => [s.key, Array.isArray(s.members) ? [...s.members] : null])),
+  };
+}
+
+/** 把这次保存到底做了什么写成一句人话，进 anchors.json 的 _history 当凭证 */
+function reasonOf(prev) {
+  const cut = (a) => a.slice(0, 6).join(', ') + (a.length > 6 ? ` 等 ${a.length} 个` : '');
+  const nowP = S.products.map((p) => p.id);
+  const bits = [];
+  const gone = prev.products.filter((i) => !nowP.includes(i));
+  const added = nowP.filter((i) => !prev.products.includes(i));
+  if (gone.length) bits.push(`产品库删除 ${cut(gone)}`);
+  if (added.length) bits.push(`产品库新增 ${cut(added)}`);
+  for (const s of S.sites) {
+    const was = prev.members[s.key];
+    if (!was || !Array.isArray(s.members)) continue;
+    const g = was.filter((i) => !s.members.includes(i));
+    const a = s.members.filter((i) => !was.includes(i));
+    if (g.length) bits.push(`${s.key} 移出本站 ${cut(g)}`);
+    if (a.length) bits.push(`${s.key} 加入本站 ${cut(a)}`);
+  }
+  return bits.join('；') || '未检测到型号或站点成员的增删（改的是状态、起订量、画册、顺序，或者只是重复保存）';
+}
+
+/**
+ * 只卡在人工基线时走这里。这类失败的意思就是「你有意识地改了内容」，
+ * 该问一句“是有意的吗”，而不是让人去编辑 tools/check.mjs 里的数字。
+ * 非基线类失败（主数据复算不一致、区段外被手改、产物混进后台痕迹）根本不会到这里。
+ */
+async function adoptAnchors(r, prev) {
+  const fmt = (v) => (typeof v === 'object' ? JSON.stringify(v) : String(v));
+  const lines = r.anchorPrompt.map((f) => `  ${f.site}.${f.field} → ${fmt(f.value)}`).join('\n');
+  const reason = reasonOf(prev);
+  const sure = confirm(
+    '数据与页面都已保存，回归校验只卡在「人工基线」这一类（主数据独立复算是一致的）。\n\n' +
+    '需要更新的数字：\n' + lines + '\n\n' +
+    '这次做的事：' + reason + '\n\n' +
+    '是有意的改动吗？确认后我把新数字写进 tools/anchors.json（附一行历史）并继续更新 dist。'
+  );
+  if (!sure) return '未采纳基线：数据与页面已保存，但 dist 没更新。反悔可用顶部「撤销」或「备份列表」回滚。';
+  const a = await api('/api/anchors', { reason });
+  printLog('—— 采纳人工基线 ——\n' + (a.out || '') + (a.build ? '\n—— 重新跑一遍 ——\n' + threeStage(a) : ''));
+  if (!a.adopted) return '基线采纳被拒：还有非基线类的失败，见日志';
+  return resultNote(a);
 }
 
 /** 三段输出的共同排版 */

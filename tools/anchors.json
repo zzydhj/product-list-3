@@ -1,0 +1,52 @@
+{
+  "_readme": "人工基线：这些数字是人工核对过的线上真相，用来在「数据被意外改动」时报警（比如一次误操作批量删掉型号）。\n它和「与主数据独立复算」是两类完全不同的检查：复算不一致 = 生成器坏了，必须查清楚；只有基线不符 = 通常是你有意的内容改动，在后台点「保存并生成」时会问你一次确认，确认后自动回写本文件，不需要手改任何代码。\n也可以在命令行采纳：node tools/check.mjs --adopt --reason \"为什么改\"。\n每次改动都会在 _history 追加一行，便于回看是谁在什么时候把哪个数字从几改到几。",
+  "_history": [
+    "2026-10-20 经授权把 5 个已下架产品（Acrylic display box 下的 For-PSA 系列）移出画册：catalog.live 415 → 410，从此画册与选款表生效数一致。置灰的 5 个仍留在画册里，那是故意留的「可看不可选」展示位。",
+    "2026-10-22 在主站把这 5 个 For-PSA 恢复成「正常可选」并设本站起订量 50、放回画册：产品库里它们仍是 hidden，只有 card-holder 写了本站覆盖，所以 TPU 与其他站一律不变。card-holder.live 与 catalog.live 410 → 415，Acrylic display box 19 → 24。",
+    "2026-10-22 从产品库彻底删除 PTCG-ETB-(5mm)，各站成员名单/本站覆盖/画册排除里的引用已自动清理、四个页面 0 处残留：card-holder.live 与 catalog.live 415 → 414，Acrylic display box 24 → 23。"
+  ],
+  "card-holder": {
+    "live": 414,
+    "perGroup": {
+      "Grading Slab Protection": 182,
+      "Silicone Bumper": 40,
+      "PSA/BGS Aluminum": 126,
+      "Magnetic PSA Base": 11,
+      "Acrylic display box": 23,
+      "PP Card Binder": 16,
+      "PP Card Divider": 16
+    },
+    "categories": 34,
+    "disabled": [
+      "ALL-A",
+      "ALL-B",
+      "ALL-C",
+      "ALL-D",
+      "ALL-F"
+    ]
+  },
+  "TPU": {
+    "live": 182,
+    "perGroupIsPerCategory": true,
+    "perGroup": {
+      "PSA Back Single Panel": 48,
+      "PSA Single Panel No Glitter": 5,
+      "PSA with Double panels": 22,
+      "PSA Magnetic Double Panels": 4,
+      "PSA no Plate": 41,
+      "BGS with panel": 14,
+      "BGS Single Panel No Glitter": 5,
+      "ACE with panel": 11,
+      "CGC with panel": 12,
+      "TAG with panel": 12,
+      "TAG Single Panel No Glitter": 5,
+      "PSA Glossy Finish No Plate": 3
+    }
+  },
+  "catalog": {
+    "live": 414
+  },
+  "catalog-tpu": {
+    "live": 182
+  }
+}

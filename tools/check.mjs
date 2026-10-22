@@ -150,8 +150,13 @@ const WHITELIST = [
 
 const PH = '@@GEN@@';
 let failed = 0;
+// 失败分两类：gate = 生成器或产物坏了，必须查；anchor = 只是人工基线旧了，
+// 可以由人确认后采纳。两者都拦住 dist，但只有后者能一键放过（见 badAnchor）。
+let gateFail = 0;
+const anchorFix = [];
 const ok = (m) => console.log('  [ok] ' + m);
-const bad = (m) => { console.log('  [!!] ' + m); failed++; };
+const bad = (m) => { console.log('  [!!] ' + m); failed++; gateFail++; };
+const badAnchor = (m, site, field, value) => { console.log('  [!!] ' + m); failed++; anchorFix.push({ site, field, value }); };
 const trim = (l) => l.trim();
 
 /** 剔除块注释与行尾注释，返回每行的净内容（注释是给人看的，不该参与一致性比对） */
@@ -301,44 +306,21 @@ for (const s of SITES) {
 console.log('\n=== D. 数字断言 ===');
 const products = JSON.parse(fs.readFileSync(path.join(TOOLS, 'products.json'), 'utf8')).products;
 
-// 人工核对过的线上真相。改动它们必须先确认是「内容变更」而不是「工具把数据弄错了」。
-// 变更史：2026-10-20 经你授权把 5 个已下架产品（Acrylic display box 下的 For-PSA 系列）
-// 移出画册，catalogVisible 由 415 调为 410，从此画册与选款表生效数一致。
-// 2026-10-22 你在主站把这 5 个恢复成「正常可选」并设了本站起订量 50、放回画册：产品库里
-// 它们仍是 hidden（所以 TPU 与其他站一律不变），只有 card-holder 写了本站覆盖，
-// 于是 formLive 与 catalogVisible 回到 415，Acrylic display box 分组 19 变 24。
-// 2026-10-22 你又从产品库彻底删除了 PTCG-ETB-(5mm)（各站成员/覆盖/画册排除里的引用已自动
-// 清干净，四个页面 0 处残留）：formLive 与 catalogVisible 变 414，该分组 24 变 23。
-// 置灰（disabled）的 5 个仍留在画册里：那是你故意留的「可看不可选」展示位。
-const EXPECT = {
-  formLive: 414,
-  tpuVisible: 182,
-  catalogVisible: 414,
-  // 锚点按「分组名 / 分类名 → 可见卡片数」配，而不是按位置配：
-  // 分组与分类的先后你在后台随时可以调，调顺序不该被误判成“数据错了”。
-  groupVisible: {
-    'Grading Slab Protection': 182, 'Silicone Bumper': 40, 'PSA/BGS Aluminum': 126,
-    'Magnetic PSA Base': 11, 'Acrylic display box': 23, 'PP Card Binder': 16, 'PP Card Divider': 16,
-  },
-  tpuCats: {
-    'PSA Back Single Panel': 48, 'PSA Single Panel No Glitter': 5, 'PSA with Double panels': 22,
-    'PSA Magnetic Double Panels': 4, 'PSA no Plate': 41, 'BGS with panel': 14,
-    'BGS Single Panel No Glitter': 5, 'ACE with panel': 11, 'CGC with panel': 12,
-    'TAG with panel': 12, 'TAG Single Panel No Glitter': 5, 'PSA Glossy Finish No Plate': 3,
-  },
-  categories: 34,
-  disabled: ['ALL-A', 'ALL-B', 'ALL-C', 'ALL-D', 'ALL-F'],
-};
-
-// 这三个页面是本次迁移的对象，它们的数字是人工核对过的线上真相，必须继续硬锚定；
-// 新建站点没有历史锚点，只跟「主数据独立复算」的结果比。
-const ANCHORS = {
-  'card-holder': { live: EXPECT.formLive, perGroup: EXPECT.groupVisible, categories: EXPECT.categories, disabled: EXPECT.disabled },
-  TPU: { live: EXPECT.tpuVisible, perGroup: EXPECT.tpuCats, perGroupIsPerCategory: true },
-  catalog: { live: EXPECT.catalogVisible },
-  // TPU 配套画册：人工核对过 = TPU 站成员 182 条，且 TPU 站没有排除任何型号
-  'catalog-tpu': { live: EXPECT.tpuVisible },
-};
+// 人工基线放在 tools/anchors.json 里，而不是写死在本文件源码里。
+// 为什么搬出去：只有基线对不上（而主数据独立复算仍一致）意味着“你有意识地改了内容”，
+// 这种时候让人去改一段生成器源码是把顺序搞反了 —— 应该它问你一句、你点一下。
+// 下划线开头的键（_readme / _history）不是站点，跳过。
+const ANCHOR_FILE = path.join(TOOLS, 'anchors.json');
+const ADOPT = process.argv.includes('--adopt');
+const AS_JSON = process.argv.includes('--json');
+const optVal = (name, dft) => { const i = process.argv.indexOf(name); return i > -1 && process.argv[i + 1] ? process.argv[i + 1] : dft; };
+let ANCHORS = {};
+try {
+  const rawAnchors = JSON.parse(fs.readFileSync(ANCHOR_FILE, 'utf8'));
+  for (const [k, v] of Object.entries(rawAnchors)) if (!k.startsWith('_')) ANCHORS[k] = v;
+} catch (e) {
+  bad(`读不到 ${path.relative(ROOT, ANCHOR_FILE)}：${e.message}（人工基线丢了就没人能判断数字对不对，先把它补回来）`);
+}
 
 /**
  * 用主数据独立走一遍「该站点应渲染哪些型号」。
@@ -380,11 +362,10 @@ const sameList = (a, b) => JSON.stringify(sorted(a)) === JSON.stringify(sorted(b
 /**
  * 人工基线不符与「与主数据不符」是两类完全不同的问题：后者是生成器坏了，
  * 前者通常是你有意改了数据（本站下架一个型号、删一个分组）。两者都拦住 dist，
- * 但只有前者需要人改数字，所以必须把「改哪个键、改成什么」直接说出来，
- * 否则用户只看到一片红字，不知道下一步做什么。
+ * 但只有前者需要确认采纳，所以提示里直接说清「哪个站、哪个字段、该改成多少」。
  */
-const hintNum = (key, field, value) => `\n        → 若是有意的改动：把 tools/check.mjs 里 ANCHORS['${key}'].${field} 改成 ${value}`;
-const hintObj = (key, field, value) => `\n        → 若是有意的改动：把 tools/check.mjs 里 ANCHORS['${key}'].${field} 改成 ${JSON.stringify(value)}`;
+const hintNum = (key, field, value) => `\n        → 这一般是有意改动：点一下后台的「保存并生成」会问你确认（确认后自动写进 tools/anchors.json）；\n          也可以在命令行跑：node tools/check.mjs --adopt --reason "为什么改"。要把 ${key}.${field} 采纳为 ${value}`;
+const hintObj = (key, field, value) => `\n        → 这一般是有意改动：点一下后台的「保存并生成」会问你确认（确认后自动写进 tools/anchors.json）；\n          也可以在命令行跑：node tools/check.mjs --adopt --reason "为什么改"。要把 ${key}.${field} 采纳为 ${JSON.stringify(value)}`;
 const byId = new Map(products.map((p) => [p.id, p]));
 
 for (const s of SITES) {
@@ -405,7 +386,7 @@ for (const s of SITES) {
     bad(`${s.file} 生效条目与主数据不符：应渲染 ${want.length}，实际 ${live.length}（缺失 ${miss.slice(0, 5).join(',') || '无'}；多余 ${extra.slice(0, 5).join(',') || '无'}）`);
   }
   if (anchor.live !== undefined && live.length !== anchor.live) {
-    bad(`${s.file} 生效条目 ${live.length} != 人工基线 ${anchor.live}${hintNum(def.key, 'live', live.length)}`);
+    badAnchor(`${s.file} 生效条目 ${live.length} != 人工基线 ${anchor.live}${hintNum(def.key, 'live', live.length)}`, def.key, 'live', live.length);
   }
 
   if (def.type === 'catalog') continue;
@@ -436,7 +417,7 @@ for (const s of SITES) {
     const drift = Object.entries(anchor.perGroup).filter(([k, v]) => gotByName[k] !== v);
     const gone = Object.keys(anchor.perGroup).filter((k) => !(k in gotByName));
     if (drift.length || gone.length) {
-      bad(`${s.file} 可见分布与人工基线不符：${drift.map(([k, v]) => `${k} ${gotByName[k]}≠${v}`).join(', ') || '数量均一致'}${gone.length ? '；基线里的这些单位已不在本站点分组中：' + gone.join(', ') : ''}${hintObj(def.key, 'perGroup', gotByName)}`);
+      badAnchor(`${s.file} 可见分布与人工基线不符：${drift.map(([k, v]) => `${k} ${gotByName[k]}≠${v}`).join(', ') || '数量均一致'}${gone.length ? '；基线里的这些单位已不在本站点分组中：' + gone.join(', ') : ''}${hintObj(def.key, 'perGroup', gotByName)}`, def.key, 'perGroup', gotByName);
     } else {
       ok(`${def.key} 各分组可见卡片与人工基线逐项一致`);
     }
@@ -449,7 +430,7 @@ for (const s of SITES) {
     ? ok(`分类数 ${gotCats.length}`)
     : bad(`分类数 ${gotCats.length} != 主数据复算 ${wantCats.length}`);
   if (anchor.categories !== undefined && gotCats.length !== anchor.categories) {
-    bad(`${s.file} 分类数 ${gotCats.length} != 人工基线 ${anchor.categories}${hintNum(def.key, 'categories', gotCats.length)}`);
+    badAnchor(`${s.file} 分类数 ${gotCats.length} != 人工基线 ${anchor.categories}${hintNum(def.key, 'categories', gotCats.length)}`, def.key, 'categories', gotCats.length);
   }
 
   // 停用名单（页面里的 DISABLED_PRODUCT_IDS 必须等于主数据里该站点置灰的那些）
@@ -466,9 +447,47 @@ for (const s of SITES) {
     ? ok(`停用名单 ${gotDisabled.join(', ') || '（空）'}`)
     : bad(`停用名单 ${gotDisabled.join(', ')} != 主数据复算 ${wantDisabled.join(', ')}`);
   if (anchor.disabled && !sameList(gotDisabled, anchor.disabled)) {
-    bad(`${s.file} 停用名单 ${gotDisabled.join(', ')} != 人工基线 ${anchor.disabled.join(', ')}${hintObj(def.key, 'disabled', gotDisabled)}`);
+    badAnchor(`${s.file} 停用名单 ${gotDisabled.join(', ')} != 人工基线 ${anchor.disabled.join(', ')}${hintObj(def.key, 'disabled', gotDisabled)}`, def.key, 'disabled', gotDisabled);
   }
 }
 
+// 采纳人工基线：只有「基线旧了」这一类失败能走这条路。任何 gate 类失败都直接拒，
+// 否则就是给一个坏结果盖章。改完追一行 _history，谁在什么时候把哪个数字从几改到几可回看。
+if (ADOPT) {
+  const fmt = (v) => (typeof v === 'object' ? JSON.stringify(v) : String(v));
+  if (!anchorFix.length) {
+    console.log('\n没有可采纳的人工基线项（要么全过，要么失败的不是基线类）\n');
+    process.exit(failed ? 1 : 0);
+  }
+  if (gateFail) {
+    console.log(`\n[拒绝] 还有 ${gateFail} 项不是基线问题：那说明生成器或产物本身不对，采纳基线等于给坏结果盖章。先把那些查清楚。\n`);
+    process.exit(1);
+  }
+  const raw = JSON.parse(fs.readFileSync(ANCHOR_FILE, 'utf8'));
+  const changed = [];
+  for (const f of anchorFix) {
+    raw[f.site] = raw[f.site] || {};
+    const before = raw[f.site][f.field];
+    if (JSON.stringify(before) === JSON.stringify(f.value)) continue;
+    raw[f.site][f.field] = f.value;
+    changed.push(`${f.site}.${f.field} ${fmt(before)} → ${fmt(f.value)}`);
+  }
+  if (!changed.length) { console.log('\n基线已经是当前值，无需改写\n'); process.exit(0); }
+  raw._history = Array.isArray(raw._history) ? raw._history : [];
+  raw._history.push(`${new Date().toISOString().slice(0, 10)} 采纳：${changed.join('；')}（原因：${optVal('--reason', '（未注明原因）')}）`);
+  fs.writeFileSync(ANCHOR_FILE, JSON.stringify(raw, null, 2) + '\n', 'utf8');
+  console.log(`\n[已更新] tools/anchors.json：${changed.join('；')}`);
+  console.log('  再跑一次回归校验确认全绿，dist 才会跟着更新。\n');
+  process.exit(0);
+}
+
 console.log(failed ? `\n校验失败 ${failed} 项\n` : '\n全部校验通过\n');
+// --json：供后台保存流程判断「是不是只卡在基线上」，从而弹一次确认而不是一片红字
+if (AS_JSON) {
+  console.log('===JSON===\n' + JSON.stringify({
+    ok: !failed, failed, gateFail,
+    anchorOnly: failed > 0 && gateFail === 0,
+    anchorFix,
+  }));
+}
 process.exit(failed ? 1 : 0);
