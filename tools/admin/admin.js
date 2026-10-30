@@ -679,12 +679,12 @@ function renderCats() {
 function renderStats() {
   const box = $('#stats');
   box.innerHTML = '';
-  // 产品库视图数的是全库；站点视图数的是本站成员按本站生效值（含覆盖）。
+  // 产品库视图数的是全库；站点视图数的是本站收录的型号按本站生效值（含覆盖）。
   // 两边共用一个 pool，否则「可选 350」配着一个只有一百多张卡片的网格，读数对不上。
-  const pool = isLibrary() ? S.products : membersAsOf(memberSource()).map(findProduct).filter(Boolean);
+  const pool = isLibrary() ? S.products : sitePool();
   const n = (f) => pool.filter(f).length;
   const rows = [
-    isLibrary() ? ['产品库型号总数', S.products.length] : [`${site().key} 成员`, pool.length],
+    isLibrary() ? ['产品库型号总数', S.products.length] : [`${site().key} 收录`, pool.length],
     ['可选（正常）', n((p) => effState(p) === 'normal')],
     ['置灰', n((p) => effState(p) === 'disabled')],
     ['预售 Pre Sale', n((p) => effState(p) === 'presale')],
@@ -698,6 +698,10 @@ function renderStats() {
     rows.push(['本站有例外', n(hasOverride)]);
     rows.push(['本站画册', albumCount()]);
     rows.push([`${site().key} 将渲染`, siteProducts(site()).length]);
+    // 被移出分组的成员不在网格里出现（摆一张「本站不显示」的卡片是自相矛盾），
+    // 但也不能让你以为数据丢了：这里留一个数，去「站点 / 分组」把分类放回分组即恢复。
+    const og = outOfGroupCount();
+    if (og) rows.push(['已移出分组的成员', og]);
   }
   rows.push(['分类数', new Set(pool.map((p) => p.category)).size]);
   for (const [k, v] of rows) {
@@ -707,12 +711,38 @@ function renderStats() {
   }
 }
 
+/**
+ * 本站列表该列哪些型号：成员 ∩ 分组叶子（与 lib.mjs 的 siteProductsOpts 同一把尺）。
+ * 被移出分组的分类下的型号不再出现在本站列表里 —— 它们仍留在 members 里，
+ * 把分类放回分组就回来；但在界面上它们就该跟「根本没加入本站的型号」一样不可见：
+ * 摆一张卡片再挂个「本站不显示」的标签是自相矛盾，也没人在这里想编辑一个不显示的型号。
+ */
+function sitePool() {
+  const src = memberSource();
+  const ids = orderedMembers(src).map(findProduct).filter(Boolean);
+  const leaves = new Set(groupLeaves(src.groups || []));
+  return leaves.size ? ids.filter((p) => leaves.has(p.category)) : ids;
+}
+
+/** 被分组排除掉的本站成员数（统计行用它提醒你「不是数据丢了，是分类不在分组里」）*/
+function outOfGroupCount() {
+  const src = memberSource();
+  const leaves = new Set(groupLeaves(src.groups || []));
+  if (!leaves.size) return 0;
+  return orderedMembers(src).map(findProduct).filter(Boolean).filter((p) => !leaves.has(p.category)).length;
+}
+
 function visible() {
   const q = S.filter.q.trim().toLowerCase();
-  // 站点视图只列本站成员（「进哪个站只操作哪个站」）；画册站按 owner 的名单与顺序收，
+  // 站点视图只列本站收录的型号（「进哪个站只操作哪个站」）；画册站按 owner 的名单与顺序收，
   // 否则你在画册视图看到 420 个却不知道画册其实只有 182 个。产品库视图列全部型号。
   // 排序走本站自己的 order：在 TPU 里拖动不会把主站顺序也拖改了。
-  const list = isLibrary() ? S.products.slice() : orderedMembers(memberSource()).map(findProduct).filter(Boolean);
+  const list = isLibrary() ? S.products.slice() : sitePool();
+  if (!isLibrary()) {
+    // 勾选集合不参与筛选：不然你看不到的卡片会被批量操作改到（上一轮勾的、这一轮被移出分组的）
+    const keep = new Set(list.map((p) => p.id));
+    for (const id of [...S.checked]) if (!keep.has(id)) S.checked.delete(id);
+  }
   return list.filter((p) => {
     if (S.filter.status === 'unassigned' && inAnySite(p.id)) return false;
     if (S.filter.status === 'exception' && !hasOverride(p)) return false;
@@ -777,10 +807,6 @@ function renderGrid() {
     } else {
       const alb = inAlbum(albumSite(), p);
       tags.append(el('span', 'tag' + (alb ? ' on' : ''), alb ? '画册' : '不在画册'));
-      // 本站声明了分组却没收录它：成品页会把卡片一直藏着（画册也不印）。
-      // 不说破的话，你在网格里看到的是一张页面根本不显示的卡片。
-      const ls = leafSet();
-      if (ls.size && !ls.has(p.category)) tags.append(el('span', 'tag out', '未分组·本站不显示'));
     }
     meta.append(tags);
 
