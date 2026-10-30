@@ -294,6 +294,46 @@ function addMembers(ids) {
 const ownsMembers = (s) => s.type === 'form';
 const canRemoveMember = (p) => ownsMembers(site()) && membersAsOf(site()).includes(p.id);
 
+/** 本站是否已有配套画册：画册是一条独立记录（type=catalog）靠 owner 指回选款站 */
+const albumOf = (s) => S.sites.find((x) => x.type === 'catalog' && x.owner === s.key);
+
+/**
+ * 组一条画册记录。水印与缩进从已有画册抄（选款站没有水印字段，抄它会丢东西）；
+ * 没有任何画册可抄就拒：build 的 scaffold 是逐字节克隆 template 站的页面，
+ * 拿选款页当画册模板克隆出来的东西根本不是画册。
+ */
+function albumPlan(ownerSite) {
+  const tpl = S.sites.find((x) => x.type === 'catalog');
+  if (!tpl) {
+    return { error: '当前还没有任何画册站点可克隆：画册页必须从现有画册页克隆，不能拿选款页当模板' };
+  }
+  const dir = ownerSite.file.includes('/') ? ownerSite.file.slice(0, ownerSite.file.lastIndexOf('/')) : '.';
+  const key = `${ownerSite.key}-catalog`;
+  if (S.sites.some((x) => x.key === key)) return { error: `已有同名站点 ${key}，请先处理那一个` };
+  const file = `${dir}/product-catalog.html`;
+  if (S.sites.some((x) => x.file === file)) return { error: `产物路径已被占用：${file}` };
+  return {
+    rec: {
+      key,
+      type: 'catalog',
+      file,
+      title: `${ownerSite.key} Product Catalog`,
+      productsIndent: tpl.productsIndent || '        ',
+      owner: ownerSite.key,
+      watermark: { ...(tpl.watermark || {}) },
+      template: tpl.key,
+    },
+  };
+}
+
+/** 只写数据：快照与重渲染由调用方负责，不然一次动作会记两份撤销 */
+function pushAlbum(ownerSite) {
+  const plan = albumPlan(ownerSite);
+  if (plan.error) { toast(plan.error, 'bad'); return null; }
+  S.sites.push(plan.rec);
+  return plan.rec;
+}
+
 /** 移出本站：只删本站名单里的这一条，产品库里还在，别的站也在 */
 function removeMember(p) {
   const s = site();
@@ -965,6 +1005,29 @@ function renderSiteForm() {
   const add = el('button', '', '从当前站点摘出一个新站点');
   add.onclick = () => openNewSiteDialog(s);
   box.appendChild(add);
+
+  // 画册不会自己冒出来：它是另一条站点记录。以前只能靠人手改 sites.json，
+  // 所以新建的选款站永远配不上画册 —— 给一个明摆着的入口。
+  const alb = el('button', '', '给本站加一本配套画册');
+  const has = albumOf(s);
+  alb.hidden = !ownsMembers(s) || Boolean(has);
+  alb.title = has
+    ? `本站已有画册 ${has.key}`
+    : '新增一条 type=catalog 的记录：成员、顺序与画册排除表全部跟随本站，它自己只管标题与水印';
+  alb.onclick = async () => {
+    const plan = albumPlan(s);
+    if (plan.error) return toast(plan.error, 'bad');
+    const r = plan.rec;
+    if (!(await askOk('给本站加一本配套画册',
+      `将新增一条站点记录：\n  key  ${r.key}\n  页面  ${r.file}\n  跟随  ${s.key}（成员、顺序、排除表都读那个站）\n  标题  ${r.title}（建好后可在本页改）\n  水印  沿用 ${r.template} 的，之后可在本页调\n\n这一步还在内存里：要点顶部「保存并生成」才会真把画册页建出来。`,
+      false))) return;
+    snapshot();
+    const rec = pushAlbum(s);
+    if (!rec) return;
+    renderAll();
+    toast(`已加入画册 ${rec.key}（跟随 ${s.key}）——点「保存并生成」即生成 ${rec.file}`);
+  };
+  box.appendChild(alb);
 }
 
 function field(label, type, value, onChange, attrs) {
@@ -1142,6 +1205,7 @@ function openNewSiteDialog(tpl) {
   if (!(tpl.groups || []).length) box.appendChild(el('div', 'hint', '当前站点没有分组'));
   $('#ns-key').oninput = nsCheck;
   $('#ns-title').oninput = nsCheck;
+  $('#ns-album').onchange = nsCheck;
   nsCheck();
   $('#ns-key').focus();
 }
@@ -1165,25 +1229,32 @@ function nsProblem() {
   if (!title) return { field: 'title', msg: '标题必填，浏览器标签页不能没有名字' };
   if (/[<>]/.test(title)) return { field: 'title', msg: '标题不能含尖括号' };
   if (!nsChecked().length) return { field: 'groups', msg: '至少勾一个分组，不然新站点一个型号都不会有' };
+  if ($('#ns-album').checked && !S.sites.some((x) => x.type === 'catalog')) {
+    return { field: 'album', msg: '当前还没有任何画册可克隆：请取消勾上「配一本画册」，或先给现有站点建一本' };
+  }
   return null;
 }
 
 /** 校验 + 刷预览；返回 nsProblem 的结果，建站点那一步用它的返回值拦下非法输入 */
 function nsCheck() {
   const bad = nsProblem();
-  const msg = { key: '', title: '', groups: '' };
+  const msg = { key: '', title: '', groups: '', album: '' };
   if (bad) msg[bad.field] = bad.msg;
   $('#e-ns-key').textContent = msg.key;
   $('#e-ns-title').textContent = msg.title;
   $('#e-ns-groups').textContent = msg.groups;
+  $('#e-ns-album').textContent = msg.album;
   const key = $('#ns-key').value.trim();
   const leaves = new Set(groupLeaves(nsGroups()));
   const n = nsTpl ? S.products.filter((p) => leaves.has(p.category)).length : 0;
+  const alb = $('#ns-album').checked;
+  const albTpl = S.sites.find((x) => x.type === 'catalog');
   // 把「点下去到底会发生什么」摆在点之前：克隆哪个页面、纳入多少型号、存档键叫什么。
   // 型号数含下架的那些（它们在页面上是注释行），与 build 物化成员的口径一致。
   $('#ns-preview').textContent = (bad || !nsTpl) ? '' :
     `将创建 ${key}/index.html（从 ${nsTpl.file} 克隆），成员 ${n} 个型号（含下架的注释行）；` +
-    `存档键 ${key.replace(/[^A-Za-z0-9]+/g, '_')}_order_form_data_v1`;
+    `存档键 ${key.replace(/[^A-Za-z0-9]+/g, '_')}_order_form_data_v1` +
+    (alb ? `；并配一本画册 ${key}-catalog（${key}/product-catalog.html，水印沿用 ${albTpl ? albTpl.key : '无'}）` : '；不建画册');
   $('#ns-ok').disabled = Boolean(bad) || !nsTpl;
   return bad;
 }
@@ -1215,10 +1286,16 @@ function nsCreate() {
     overrides: {},
     raw: {},
   });
+  const rec = S.sites[S.sites.length - 1];
+  // 画册跟站点一起建：两个都是写同一份 sites.json，分开建很容易只建了一半。
+  // 快照在 nsCreate 开头已经记过一次了，这里只往数据里追加，不再各记一份撤销。
+  const album = $('#ns-album').checked ? pushAlbum(rec) : null;
   closeNewSiteDialog();
   S.siteKey = key;
   renderAll();
-  toast(`已加入站点 ${key}（还在内存里）。点「保存并生成」会从 ${tpl.file} 克隆出 ${key}/index.html 并跑门禁`);
+  toast(album
+    ? `已加入站点 ${key} 与配套画册 ${album.key}（还在内存里）。点「保存并生成」会克隆出 ${key}/index.html 与 ${album.file} 并跑门禁`
+    : `已加入站点 ${key}（还在内存里）。点「保存并生成」会从 ${tpl.file} 克隆出 ${key}/index.html 并跑门禁`);
 }
 
 // ---------------------------------------------------------------- 拖拽排序

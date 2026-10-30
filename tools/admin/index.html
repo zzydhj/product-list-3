@@ -223,6 +223,9 @@
             <div class="group-title">要装哪些分组（默认全勾 = 复制当前站点的分组）</div>
             <div id="ns-groups"></div>
             <div class="err" id="e-ns-groups"></div>
+            <!-- 画册不会自己冒出来：它是另一条站点记录（type=catalog + owner），所以建站那一刻就问一句 -->
+            <label class="switch"><input type="checkbox" id="ns-album" checked> 同时为它配一本画册（产品目录页）</label>
+            <div class="err" id="e-ns-album"></div>
             <div class="hint" id="ns-preview"></div>
             <div class="row-btns">
                 <button id="ns-cancel">取消</button>
