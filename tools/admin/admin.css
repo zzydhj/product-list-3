@@ -786,6 +786,32 @@ textarea:disabled {
     padding: 6px 10px 12px;
 }
 
+/* 输入 / 确认类弹窗：比挑型号那个窄，正文按换行排（删除产品的说明有好几行） */
+.modal-box.dlg {
+    width: min(440px, 100%);
+    padding: 0 14px 2px;
+}
+
+.modal-box.dlg .modal-head {
+    margin: 0 -14px;
+    padding: 12px 14px;
+}
+
+.dlg-msg {
+    font-size: 12px;
+    line-height: 1.55;
+    white-space: pre-line;
+    margin: 10px 0 8px;
+}
+
+#ns-groups {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-height: 30vh;
+    overflow: auto;
+}
+
 .pick-row {
     display: flex;
     align-items: center;

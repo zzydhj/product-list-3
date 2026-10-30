@@ -195,6 +195,42 @@
         </div>
     </div>
 
+    <!-- 通用的页内输入 / 确认弹窗。以前这些入口全用 window.prompt / window.confirm，
+         而调用点一律是 `if (!x) return;` —— 宿主拿不到原生模态的返回值时，整条动作
+         静默停在第一步，不报错也不提示，看上去就是「点了没反应」（摘出新站点就是这样） -->
+    <div class="modal" id="dlg" hidden>
+        <div class="modal-box dlg">
+            <div class="modal-head"><b id="dlg-title"></b></div>
+            <div class="dlg-msg" id="dlg-msg"></div>
+            <input id="dlg-input" type="text" spellcheck="false" autocomplete="off">
+            <div class="row-btns">
+                <button id="dlg-cancel">取消</button>
+                <button id="dlg-ok" class="primary">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 摘出一个新站点：要同时定目录名、页面标题与分组范围，所以不是一个输入框能搞定的事，
+         单独一个表单弹窗（分组用勾选而不是让人回忆名字敲逗号） -->
+    <div class="modal" id="newsites" hidden>
+        <div class="modal-box dlg">
+            <div class="modal-head"><b>从当前站点摘出一个新站点</b></div>
+            <label>站点目录名 / key<input id="ns-key" spellcheck="false" autocomplete="off"
+                    placeholder="例如 BGS-only"></label>
+            <div class="err" id="e-ns-key"></div>
+            <label>页面标题（显示在浏览器标签页上）<input id="ns-title" spellcheck="false" autocomplete="off"></label>
+            <div class="err" id="e-ns-title"></div>
+            <div class="group-title">要装哪些分组（默认全勾 = 复制当前站点的分组）</div>
+            <div id="ns-groups"></div>
+            <div class="err" id="e-ns-groups"></div>
+            <div class="hint" id="ns-preview"></div>
+            <div class="row-btns">
+                <button id="ns-cancel">取消</button>
+                <button id="ns-ok" class="primary">建站点</button>
+            </div>
+        </div>
+    </div>
+
     <div id="ctx" class="ctx" hidden></div>
     <div id="toast" class="toast" hidden></div>
 

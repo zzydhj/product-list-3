@@ -895,8 +895,8 @@ function renderSiteForm() {
         const leaf = el('span', 'leaf', c);
         const b = el('button', '', '+');
         b.title = '加入下面的分组';
-        b.onclick = () => {
-          const name = prompt(`把「${c}」加入哪个分组？（输入分组名，新名字会自动创建分组）`, s.groups[0]?.name || '');
+        b.onclick = async () => {
+          const name = await askText('加入分组', `把「${c}」加入哪个分组？（输入一个没见过的名字会自动创建分组）`, s.groups[0]?.name || '');
           if (!name) return;
           let g = s.groups.find((x) => x.name === name);
           if (!g) { g = { name, entries: [] }; s.groups.push(g); }
@@ -911,8 +911,8 @@ function renderSiteForm() {
     }
 
     const nb = el('button', '', '新增分组');
-    nb.onclick = () => {
-      const name = prompt('分组名称', '新分组');
+    nb.onclick = async () => {
+      const name = await askText('新增分组', '分组名称', '新分组');
       if (!name) return;
       snapshot();
       s.groups.push({ name, entries: [] });
@@ -952,8 +952,8 @@ function renderSiteForm() {
 
   box.appendChild(el('div', 'group-title', '危险操作'));
   const del = el('button', '', '删除本站点定义（不删文件）');
-  del.onclick = () => {
-    if (!confirm(`确认从 sites.json 里移除 ${s.key}？产物文件不会被删除。`)) return;
+  del.onclick = async () => {
+    if (!(await askOk('删除本站点定义', `确认从 sites.json 里移除 ${s.key}？产物文件不会被删除。`))) return;
     snapshot();
     S.sites = S.sites.filter((x) => x.key !== s.key);
     S.siteKey = S.sites[0].key;
@@ -963,7 +963,7 @@ function renderSiteForm() {
   box.appendChild(del);
 
   const add = el('button', '', '从当前站点摘出一个新站点');
-  add.onclick = () => newSiteDialog(s);
+  add.onclick = () => openNewSiteDialog(s);
   box.appendChild(add);
 }
 
@@ -992,8 +992,8 @@ function groupBlock(s, g) {
   const idx = () => s.groups.indexOf(g);
   up.onclick = () => { const i = idx(); if (i > 0) { snapshot(); [s.groups[i - 1], s.groups[i]] = [s.groups[i], s.groups[i - 1]]; renderAll(); } };
   down.onclick = () => { const i = idx(); if (i < s.groups.length - 1) { snapshot(); [s.groups[i + 1], s.groups[i]] = [s.groups[i], s.groups[i + 1]]; renderAll(); } };
-  rm.onclick = () => {
-    if (!confirm(`删除分组「${g.name}」？里面的分类会变成未归属，产品不会被删。`)) return;
+  rm.onclick = async () => {
+    if (!(await askOk('删除分组', `删除分组「${g.name}」？里面的分类会变成未归属，产品不会被删。`))) return;
     snapshot();
     s.groups.splice(idx(), 1);
     renderAll();
@@ -1020,8 +1020,8 @@ function groupBlock(s, g) {
     };
     const mv = el('button', '', '→');
     mv.title = '移到其它分组';
-    mv.onclick = () => {
-      const target = prompt(`把「${e}」移到哪个分组？`, s.groups.find((x2) => x2 !== g)?.name || '');
+    mv.onclick = async () => {
+      const target = await askText('移到其它分组', `把「${e}」移到哪个分组？（输入一个没见过的名字会自动创建分组）`, s.groups.find((x2) => x2 !== g)?.name || '');
       if (!target) return;
       let t = s.groups.find((x2) => x2.name === target);
       if (!t) { t = { name: target, entries: [] }; s.groups.push(t); }
@@ -1036,10 +1036,10 @@ function groupBlock(s, g) {
   box.appendChild(leaves);
 
   const rn = el('button', '', '重命名其中的分类');
-  rn.onclick = () => {
-    const old = prompt('要改哪个分类名？（会同步改所有产品）', g.entries.find((e) => typeof e === 'string') || '');
+  rn.onclick = async () => {
+    const old = await askText('重命名分类', '要改哪个分类名？（会同步改所有产品）', g.entries.find((e) => typeof e === 'string') || '');
     if (!old) return;
-    const nw = prompt('改成什么？', old);
+    const nw = await askText('重命名分类', `把「${old}」改成什么？`, old);
     if (!nw || nw === old) return;
     snapshot();
     for (const p of S.products) if (p.category === old) p.category = nw;
@@ -1061,16 +1061,139 @@ function moveLeaf(g, e, delta) {
   renderAll();
 }
 
-function newSiteDialog(tpl) {
-  const dir = prompt('新站点的目录名（英文，例如 BGS-only）', 'new-site');
-  if (!dir) return;
-  const want = prompt('要装哪些分组？用逗号分隔分组名，留空=复制当前分组\n可选：' + (tpl.groups || []).map((g) => g.name).join(' | '), '');
-  const groups = (tpl.groups || []).map((g) => ({ name: g.name, entries: [...(g.entries || [])] }));
-  const picked = (want || '').split(/[,，]/).map((x) => x.trim()).filter(Boolean);
-  const final = picked.length ? groups.filter((g) => picked.includes(g.name)) : groups;
-  if (!final.length) return toast('分组没选对，已取消', 'bad');
-  const title = prompt('新站点的页面标题（显示在浏览器标签页上，必填，留空就取消建站）', tpl.title || 'Selection and Order Form');
-  if (!title || !title.trim()) return toast('标题不能为空，已取消', 'bad');
+/**
+ * 通用的页内输入 / 确认弹窗。以前这些入口全用 window.prompt / window.confirm，而调用点一律写成
+ * `if (!x) return;` —— 宿主拿不到原生模态的返回值时（内嵌预览、弹窗被拦），整条动作静默停在
+ * 第一步，不报错也不提示，看上去就是「点了没反应」。页内弹窗不吃宿主能力。
+ * askText 确认给字符串、取消给 null；askOk 给布尔。
+ */
+let dlgResolve = null;
+let dlgMode = 'text';
+
+function openDlg({ title, msg, value, danger = true }) {
+  dlgMode = value === undefined ? 'ok' : 'text';
+  $('#dlg-title').textContent = title || '';
+  $('#dlg-msg').textContent = msg || '';
+  const inp = $('#dlg-input');
+  inp.hidden = dlgMode === 'ok';
+  inp.value = dlgMode === 'text' ? String(value || '') : '';
+  $('#dlg-ok').textContent = dlgMode === 'ok' ? '确认' : '确定';
+  // 不可逆的动作不给蓝色主按钮：它和「取消」只隔几个像素，误点一次要靠撤销或备份才能恢复
+  $('#dlg-ok').className = dlgMode === 'ok' && danger ? 'danger' : 'primary';
+  $('#dlg').hidden = false;
+  if (dlgMode === 'text') { inp.focus(); inp.select(); } else $('#dlg-ok').focus();
+  return new Promise((resolve) => { dlgResolve = resolve; });
+}
+
+function dlgDone(val) {
+  const r = dlgResolve;
+  dlgResolve = null;
+  $('#dlg').hidden = true;
+  if (r) r(val);
+}
+
+const askText = (title, msg, value) => openDlg({ title, msg, value });
+const askOk = (title, msg, danger) => openDlg({ title, msg, danger });
+
+/** 只绑一次：两个弹窗的按钮、遮罩、Enter 提交、Esc 取消 */
+function dlgWire() {
+  $('#dlg-ok').onclick = () => dlgDone(dlgMode === 'text' ? $('#dlg-input').value.trim() : true);
+  $('#dlg-cancel').onclick = () => dlgDone(dlgMode === 'text' ? null : false);
+  $('#dlg').onclick = (e) => { if (e.target.id === 'dlg') dlgDone(dlgMode === 'text' ? null : false); };
+  $('#dlg-input').onkeydown = (e) => { if (e.key === 'Enter') dlgDone($('#dlg-input').value.trim()); };
+  // 建站点那个表单弹窗：合法才让点（按钮平时是灰的），遮罩与 Esc 都算取消
+  $('#ns-ok').onclick = nsCreate;
+  $('#ns-cancel').onclick = closeNewSiteDialog;
+  $('#newsites').onclick = (e) => { if (e.target.id === 'newsites') closeNewSiteDialog(); };
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if (!$('#dlg').hidden) dlgDone(dlgMode === 'text' ? null : false);
+    if (!$('#newsites').hidden) closeNewSiteDialog();
+  });
+}
+
+/**
+ * 摘出一个新站点。以前这一步串了三次 window.prompt()：目录名、分组名（要人手回忆名字还得打逗号）、
+ * 页面标题，而第一个的取消分支直接 return，什么反馈都没有。
+ * 现在换成页内表单：分组用勾选、三个校验各自标红、成员数与克隆来源实时预览 ——
+ * 这些恰好就是建站时最容易写错的几处。
+ */
+let nsTpl = null;
+const nsChecked = () => [...document.querySelectorAll('#ns-groups input:checked')].map((c) => c.value);
+const nsGroups = () => ((nsTpl && nsTpl.groups) || []).filter((g) => nsChecked().includes(g.name));
+
+function openNewSiteDialog(tpl) {
+  nsTpl = tpl;
+  $('#newsites').hidden = false;
+  $('#ns-key').value = '';
+  $('#ns-title').value = tpl.title || 'Selection and Order Form';
+  const box = $('#ns-groups');
+  box.innerHTML = '';
+  for (const g of tpl.groups || []) {
+    const lab = el('label', 'switch');
+    const cb = el('input');
+    cb.type = 'checkbox';
+    cb.value = g.name;
+    cb.checked = true;                     // 默认全勾 = 复制当前站点的分组
+    cb.onchange = nsCheck;
+    lab.append(cb, document.createTextNode(` ${g.name}（${(g.entries || []).length} 个分类）`));
+    box.appendChild(lab);
+  }
+  if (!(tpl.groups || []).length) box.appendChild(el('div', 'hint', '当前站点没有分组'));
+  $('#ns-key').oninput = nsCheck;
+  $('#ns-title').oninput = nsCheck;
+  nsCheck();
+  $('#ns-key').focus();
+}
+
+function closeNewSiteDialog() { $('#newsites').hidden = true; nsTpl = null; }
+
+/**
+ * 返回 { field, msg } 说清哪一格填错了，返回 null 表示可以建。
+ * 判据必须与 lib.mjs 的 validate 同一把尺（key 要能当目录名、两个站不能撞同一个产物路径、
+ * 标题不能含尖括号）：等到保存那一步才被拒更坑 —— 那时站点已经建出来了，人还会以为是自己写错了。
+ */
+function nsProblem() {
+  const key = $('#ns-key').value.trim();
+  const title = $('#ns-title').value.trim();
+  if (!key) return { field: 'key', msg: '目录名必填：它同时是站点 key 和页面所在目录' };
+  if (!/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(key)) {
+    return { field: 'key', msg: '只能用英文字母、数字、- 和 _，且以字母或数字开头（要当目录名用）' };
+  }
+  if (S.sites.some((s) => s.key === key)) return { field: 'key', msg: `已有同名站点 ${key}` };
+  if (S.sites.some((s) => s.file === `${key}/index.html`)) return { field: 'key', msg: `产物路径已被占用：${key}/index.html` };
+  if (!title) return { field: 'title', msg: '标题必填，浏览器标签页不能没有名字' };
+  if (/[<>]/.test(title)) return { field: 'title', msg: '标题不能含尖括号' };
+  if (!nsChecked().length) return { field: 'groups', msg: '至少勾一个分组，不然新站点一个型号都不会有' };
+  return null;
+}
+
+/** 校验 + 刷预览；返回 nsProblem 的结果，建站点那一步用它的返回值拦下非法输入 */
+function nsCheck() {
+  const bad = nsProblem();
+  const msg = { key: '', title: '', groups: '' };
+  if (bad) msg[bad.field] = bad.msg;
+  $('#e-ns-key').textContent = msg.key;
+  $('#e-ns-title').textContent = msg.title;
+  $('#e-ns-groups').textContent = msg.groups;
+  const key = $('#ns-key').value.trim();
+  const leaves = new Set(groupLeaves(nsGroups()));
+  const n = nsTpl ? S.products.filter((p) => leaves.has(p.category)).length : 0;
+  // 把「点下去到底会发生什么」摆在点之前：克隆哪个页面、纳入多少型号、存档键叫什么。
+  // 型号数含下架的那些（它们在页面上是注释行），与 build 物化成员的口径一致。
+  $('#ns-preview').textContent = (bad || !nsTpl) ? '' :
+    `将创建 ${key}/index.html（从 ${nsTpl.file} 克隆），成员 ${n} 个型号（含下架的注释行）；` +
+    `存档键 ${key.replace(/[^A-Za-z0-9]+/g, '_')}_order_form_data_v1`;
+  $('#ns-ok').disabled = Boolean(bad) || !nsTpl;
+  return bad;
+}
+
+function nsCreate() {
+  const tpl = nsTpl;
+  if (!tpl || nsCheck()) return;
+  const key = $('#ns-key').value.trim();
+  const title = $('#ns-title').value.trim();
+  const final = nsGroups().map((g) => ({ name: g.name, entries: [...(g.entries || [])] }));
   snapshot();
   // 成员名单在建站那一刻就物化。不写 members 的话，新站会走「按分组自动摘取」的旧回退
   // 路径：以后产品库新增一个属于这些分类的型号，它会自己冒进新站，与主站、TPU 的行为不
@@ -1079,11 +1202,11 @@ function newSiteDialog(tpl) {
   const leaves = new Set(groupLeaves(final));
   S.sites.push({
     type: 'form',
-    key: dir,
-    file: `${dir}/index.html`,
-    title: title.trim(),
+    key,
+    file: `${key}/index.html`,
+    title,
     productsIndent: tpl.productsIndent || '            ',
-    storageKey: `${dir.replace(/[^A-Za-z0-9]+/g, '_')}_order_form_data_v1`,
+    storageKey: `${key.replace(/[^A-Za-z0-9]+/g, '_')}_order_form_data_v1`,
     filterToGroups: true,
     members: S.products.filter((p) => leaves.has(p.category)).map((p) => p.id),
     template: tpl.key,
@@ -1092,9 +1215,10 @@ function newSiteDialog(tpl) {
     overrides: {},
     raw: {},
   });
-  S.siteKey = dir;
+  closeNewSiteDialog();
+  S.siteKey = key;
   renderAll();
-  toast(`已加入站点 ${dir}，点「保存并生成」即创建目录与页面`);
+  toast(`已加入站点 ${key}（还在内存里）。点「保存并生成」会从 ${tpl.file} 克隆出 ${key}/index.html 并跑门禁`);
 }
 
 // ---------------------------------------------------------------- 拖拽排序
@@ -1220,8 +1344,8 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('#ctx').
  * 下架只是页面不出现，图片链接留在主数据里随时能恢复；删除是连记录一起没了。
  * 删完进撤销栈，Ctrl+Z 直接回来；再不行还有保存前的自动备份。
  */
-function deleteProduct(p) {
-  const sure = confirm(
+async function deleteProduct(p) {
+  const sure = await askOk('从产品库删除这个产品',
     `确认从产品库彻底删除 ${p.id}？\n\n` +
     `这条记录会消失，图片链接一起丢失：\n${p.image}\n` +
     `各站的成员名单、本站顺序、画册排除表与本站覆盖里的它也会一并清掉。\n\n` +
@@ -1367,11 +1491,12 @@ async function adoptAnchors(r, prev) {
   const fmt = (v) => (typeof v === 'object' ? JSON.stringify(v) : String(v));
   const lines = r.anchorPrompt.map((f) => `  ${f.site}.${f.field} → ${fmt(f.value)}`).join('\n');
   const reason = reasonOf(prev);
-  const sure = confirm(
+  const sure = await askOk('采纳人工基线',
     '数据与页面都已保存，回归校验只卡在「人工基线」这一类（主数据独立复算是一致的）。\n\n' +
     '需要更新的数字：\n' + lines + '\n\n' +
     '这次做的事：' + reason + '\n\n' +
-    '是有意的改动吗？确认后我把新数字写进 tools/anchors.json（附一行历史）并继续更新 dist。'
+    '是有意的改动吗？确认后我把新数字写进 tools/anchors.json（附一行历史）并继续更新 dist。',
+    false
   );
   if (!sure) return '未采纳基线：数据与页面已保存，但 dist 没更新。反悔可用顶部「撤销」或「备份列表」回滚。';
   const a = await api('/api/anchors', { reason });
@@ -1440,8 +1565,8 @@ async function listBackups() {
     const row = el('div', 'row-btns');
     row.append(el('span', '', b));
     const btn = el('button', '', '回滚');
-    btn.onclick = () => {
-      if (!confirm(`用 ${b} 覆盖当前主数据？`)) return;
+    btn.onclick = async () => {
+      if (!(await askOk('回滚到这份备份', `用 ${b} 覆盖当前主数据？`))) return;
       api('/api/restore', { file: b }).then(async (r) => {
         await boot();
         // 回滚前的那一刻另存了一份安全快照，但它故意不进上面这张列表（中间态被当成
@@ -1518,6 +1643,7 @@ function wire() {
   $('#btnImages').onclick = checkImages;
   $('#btnCheck').onclick = runCheck;
   $('#btnBackups').onclick = listBackups;
+  dlgWire();                            // 页内输入 / 确认弹窗的按钮与键盘，只绑一次
 
   for (const b of document.querySelectorAll('#batchbar button')) {
     b.onclick = () => {
