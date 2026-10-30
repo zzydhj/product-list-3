@@ -404,10 +404,16 @@ function closePicker() { const m = $('#picker'); if (m) m.hidden = true; }
 
 /** 该站点实际会渲染出来的产品（画册站的成员范围与排除表全部来自 owner）*/
 function siteProducts(s) {
-  // 成员来源与生成器同语义：显式 members 名单优先，没有名单才退回「按分组自动摘取」
+  // 成员来源与生成器同语义：显式 members 名单优先，但没有名单时才退回「按分组自动摘取」；
+  // 有名单时分组仍参与取交集（与 lib.mjs 的 siteProductsOpts、check.mjs 的 shouldBeLive 同一把尺）：
+  // 后台数出来的必须就是页面上会出现的，不然统计行会报一个没人看得到的数字。
   const memberOk = (src, p) => {
-    if (Array.isArray(src.members)) return src.members.includes(p.id);
-    if (src.filterToGroups) return new Set(groupLeaves(src.groups || [])).has(p.category);
+    const leaves = new Set(groupLeaves(src.groups || []));
+    if (Array.isArray(src.members)) {
+      if (!src.members.includes(p.id)) return false;
+      return leaves.size ? leaves.has(p.category) : true;
+    }
+    if (src.filterToGroups) return leaves.has(p.category);
     return true;
   };
   if (s.type === 'catalog') {
@@ -771,6 +777,10 @@ function renderGrid() {
     } else {
       const alb = inAlbum(albumSite(), p);
       tags.append(el('span', 'tag' + (alb ? ' on' : ''), alb ? '画册' : '不在画册'));
+      // 本站声明了分组却没收录它：成品页会把卡片一直藏着（画册也不印）。
+      // 不说破的话，你在网格里看到的是一张页面根本不显示的卡片。
+      const ls = leafSet();
+      if (ls.size && !ls.has(p.category)) tags.append(el('span', 'tag out', '未分组·本站不显示'));
     }
     meta.append(tags);
 
@@ -1075,11 +1085,19 @@ function groupBlock(s, g) {
     dn.title = '组内后移';
     dn.onclick = () => moveLeaf(g, e, +1);
     const x = el('button', '', '×');
-    x.title = '从该分组移除';
-    x.onclick = () => {
+    x.title = '从该分组移除（本站声明了分组时，这一类的型号会从选款页与画册一起消失）';
+    x.onclick = async () => {
+      // 这一步以前是静默改数据：表面上只是「分组少了一个分类」，实际让本站几十个型号
+      // 两边都不再显示。现在先把个数问清楚再动。
+      const src = s.type === 'catalog' ? (S.sites.find((x2) => x2.key === s.owner) || s) : s;
+      const elsewhere = s.groups.some((gg) => gg !== g && groupLeaves(gg.entries || []).includes(e));
+      const n = elsewhere ? 0 : S.products.filter((p) => p.category === e && membersAsOf(src).includes(p.id)).length;
+      if (n && !(await askOk('从分组里移掉这个分类',
+        `「${e}」下有 ${n} 个本站型号。\n移掉后它们在选款页和本站画册都不再显示（仍算本站成员，把分类放回分组即恢复）。`))) return;
       snapshot();
       g.entries.splice(g.entries.indexOf(e), 1);
       renderAll();
+      if (n) toast(`已移掉「${e}」：本站 ${n} 个型号不再显示，点「保存并生成」生效`);
     };
     const mv = el('button', '', '→');
     mv.title = '移到其它分组';

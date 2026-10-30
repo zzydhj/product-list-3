@@ -357,11 +357,18 @@ try {
  * 两边写成同一函数就只能自证，拿不到「发射逻辑写错」这个信号。
  */
 function shouldBeLive(site, master) {
-  // 成员来源与生成器同语义、但独立写一遍：显式 members 名单优先，没有名单才退回
-  // 旧的「按分组自动摘取」。两边写成同一函数就只能自证，拿不到发射逻辑写错的信号。
+  // 成员来源与生成器同语义、但独立写一遍：显式 members 名单优先（有它时分组仍参与取交集），
+  // 没有名单才退回旧的「按分组自动摘取」。两边写成同一函数就只能自证，拿不到发射逻辑写错的信号。
   const leavesOf = (src) => new Set(groupLeafNames(src.groups || []));
   const memberOk = (src, p) => {
-    if (Array.isArray(src.members)) return src.members.includes(p.id);
+    if (Array.isArray(src.members)) {
+      if (!src.members.includes(p.id)) return false;
+      // 与 lib.mjs 的 siteProductsOpts 同一条规则，依旧独立写一遍（不复用）：
+      // 本站声明了分组时分组也参与筛成员。不跟着筛的话，「不属于任何分组」的型号会在
+      // 选款页隐藏、在它的画册里照印，而两边的数都能跟主数据对得上 —— 门禁抓不到，只有人眼看得见。
+      const leaves = leavesOf(src);
+      return leaves.size ? leaves.has(p.category) : true;
+    }
     if (src.filterToGroups) return leavesOf(src).has(p.category);
     return true;
   };

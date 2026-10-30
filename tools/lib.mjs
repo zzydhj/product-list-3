@@ -258,8 +258,8 @@ export function effectiveIds(master, opts = {}) {
  * 由站点定义推出 products 区的发射参数（import 与 build 共用，保证两边一致）。
  *
  * 成员来源有两种，按优先级：
- *   1. site.members 显式名单——你在工作台「从产品库添加 / 移出本站」维护的那张表，
- *      有它就完全按它走，分组不再决定成员（只管侧栏结构与顺序）。
+ *   1. site.members 显式名单——你在工作台「从产品库添加 / 移出本站」维护的那张表；
+ *      本站声明了分组时，生效成员还要落在分组叶子里（原因见下面 filterToGroups 那段）。
  *   2. 没有 members 时退回旧的「按分组自动摘取」（filterToGroups），保证未迁移的站点行为不变。
  *
  * 画册站的成员范围与排除表全部跟随它的 owner 选款站派生，不在两处各存一份：
@@ -270,12 +270,18 @@ export function siteProductsOpts(site, master, owner) {
   const isCatalog = site.type === 'catalog';
   const src = isCatalog && owner ? owner : site;
   const members = Array.isArray(src.members) ? new Set(src.members) : null;
+  const leafSet = new Set(groupLeafNames(src.groups || []));
   return {
     surface: isCatalog ? 'catalog' : 'form',
     indent: site.productsIndent || '            ',
     membership: members,
-    filterToGroups: members ? false : Boolean(src.filterToGroups),
-    leafSet: new Set(groupLeafNames(src.groups || [])),
+    // 分组一旦声明就与 members 取交集（不只是「没写 members 才退回按分组摘取」那一条旧路径）：
+    // 成品页运行时本来就不认识「不属于任何分组」的型号 —— getGroupForCategory 返回 null，
+    // 而卡片显示条件是 getGroupForCategory(...) === currentGroup，永远对不上，卡片全隐藏。
+    // 生成器不跟着筛的话，同一批型号会在选款页不显示、却在它的画册里照印，两处各自自洽而用户看到的是不一致。
+    // 站点没写 groups（叶子表为空）时不参与筛选，保证未配分组的旧站点行为不变。
+    filterToGroups: members ? leafSet.size > 0 : Boolean(src.filterToGroups),
+    leafSet,
     // 覆盖也取 src：画册站自己没有 overrides，写成 site.overrides 的话，
     // 同一型号在选款页是本站覆盖值、在它自己的画册页却是产品库默认值，两套口径对不上
     //（今天靠 catalogOff 管画册、画册页也不读这两项，看不出差别，但数据是错的）。
