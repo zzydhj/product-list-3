@@ -1,0 +1,1785 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- GEN:TITLE BEGIN 此区块由生成工具托管，请勿手改 -->
+    <title>Only back panel</title>
+    <!-- GEN:TITLE END -->
+
+    <!-- 站点图标：SVG 优先、PNG 兜底（Safari / iOS 对 SVG favicon 的支持历来不稳），三份文件都在仓库与 dist 根目录 -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+
+    <!-- 引入 Tailwind：已改为本地静态 CSS（方案 1），不再依赖运行时 CDN。
+         样式表在 </head> 前引入，以保持与原 Play CDN 注入顺序一致的层叠关系，见文件末尾。 -->
+
+    <!-- 引入 Font Awesome 6 图标库（已本地化至 vendor/fontawesome，版本 6.5.2，与原 cdnjs 一致）：
+         移动端底栏 Menu / Download / Clear 与顶部通知栏小喇叭
+         统一使用矢量图标，替代 Unicode 符号（☰ ⬇ ✕）——后者由各手机系统字体/表情字体
+         渲染，粗细、大小、风格不一致，甚至会被渲染成彩色 emoji -->
+    <link rel="stylesheet" href="vendor/fontawesome/css/all.min.css">
+
+    <!-- 🛡️ 防护层 1：开启 Tailwind 霸道模式，强制覆盖 WP 样式。
+         important: true 已在构建期写入 tailwind.config.js，生成的 tailwind.css
+         中所有工具类均带 !important，效果与原运行时配置完全一致。 -->
+
+    <style>
+        /* 🛡️ 防护层 0：显式声明全局字体。
+           页面原先从未声明 font-family，文字字体完全取决于各设备系统默认字体：
+           国产安卓手机的系统字体是厂商中文字体（MiSans / HarmonyOS Sans 等），
+           其英文字形设计与常规英文字体差异很大，导致底栏英文小标签在手机上
+           看起来“字形很奇怪”。现统一为：主流英文系统字体优先、中文字体兜底。 */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+                "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+        }
+
+        button,
+        input,
+        select,
+        textarea {
+            font-family: inherit;
+        }
+
+        /* 🛡️ 防护层 2：强制剥离 WordPress 对按钮和输入框的默认干扰 */
+        button {
+            background-color: transparent !important;
+            border-radius: 0 !important;
+            text-shadow: none !important;
+            box-shadow: none !important;
+        }
+
+        input {
+            background-color: transparent !important;
+            box-shadow: none !important;
+        }
+
+        /* 🛡️ 防护层 3：加固您自己的自定义样式 */
+        .product-card {
+            transition: all 0.2s !important;
+        }
+
+        .product-card.active {
+            border-color: #3b82f6 !important;
+            background-color: #eff6ff !important;
+            box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.5) !important;
+        }
+
+        /* 停用与预售产品（数量行里 form: 'disabled' / 'presale'）：
+           图片保持原样（彩色、可点击放大），数量框由 disabled 属性禁用并显示灰底灰字 */
+        .product-card.disabled input[type=number] {
+            background-color: #f3f4f6 !important;
+            color: #9ca3af !important;
+            cursor: not-allowed;
+        }
+
+        /* 预售与停用可见化样式：开始 */
+        /* 停用与预售整卡：只把输入框涂灰不够——客户扫一眼网格分不出哪一格不能填。
+           放在 .product-card.active 之后，两张卡同时带上这两个类时由本规则说话。 */
+        .product-card.disabled {
+            background-color: #f8fafc !important;
+            border-color: #cbd5e1 !important;
+        }
+
+        .product-card.disabled h3 {
+            color: #94a3b8 !important;
+        }
+
+        /* 预售文字画在 placeholder 里做不到渐变（::placeholder 不支持 background-clip: text），
+           所以在数量框上盖一层真文字，复用 .sidebar-title 那支主题渐变（深藏青 → 蓝 → 亮蓝）。
+           .qty-wrap 只是给这层文字一个定位参照；不支持渐变裁剪的浏览器退回纯蓝，不会隐身。 */
+        .qty-wrap {
+            position: relative;
+        }
+
+        .presale-flag {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            pointer-events: none;
+            color: #1d4ed8;
+            white-space: nowrap;
+        }
+
+        @supports ((-webkit-background-clip: text) or (background-clip: text)) {
+            .presale-flag {
+                background: linear-gradient(90deg, #1e3a8a, #3b82f6 70%, #60a5fa);
+                -webkit-background-clip: text;
+                background-clip: text;
+                -webkit-text-fill-color: transparent;
+                color: transparent;
+            }
+        }
+        /* 预售与停用可见化样式：结束 */
+
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none !important;
+            margin: 0 !important;
+        }
+
+        input[type=number] {
+            -moz-appearance: textfield !important;
+        }
+
+        @keyframes fadeOut {
+            0% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: 0;
+            }
+        }
+
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none !important;
+        }
+
+        .scrollbar-hide {
+            -ms-overflow-style: none !important;
+            scrollbar-width: none !important;
+        }
+
+        /* Loading 文字呼吸动画 */
+        @keyframes pulse-text {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .animate-pulse-text {
+            animation: pulse-text 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        /* 菜单滑动提示动画 */
+        @keyframes swipe-x {
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            50% {
+                transform: translateX(-5px);
+            }
+        }
+
+        .animate-swipe {
+            animation: swipe-x 1.5s infinite;
+        }
+
+        /* ===== 侧边栏 Mega Menu ===== */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: var(--promo-h);
+            bottom: 0;
+            width: 288px;
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+            border-right: 1px solid #e2e8f0;
+            overflow: hidden;
+            z-index: 50;
+        }
+
+        .sidebar-scroll {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e1 transparent;
+        }
+
+        .sidebar-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .sidebar-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .sidebar-scroll::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        .sidebar-footer {
+            border-top: 1px solid #e2e8f0;
+            background: #ffffff;
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .sidebar-stats {
+            display: flex;
+            gap: 8px;
+        }
+
+        .stat-cell {
+            flex: 1;
+            background: #f1f5f9;
+            border-radius: 8px;
+            padding: 6px 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .stat-num {
+            font-size: 18px;
+            font-weight: 800;
+            color: #2563eb;
+            line-height: 1.1;
+        }
+
+        .stat-label {
+            font-size: 10px;
+            color: #64748b;
+            margin-top: 2px;
+        }
+
+        .sidebar-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .sb-btn-clear,
+        .sb-btn-download {
+            flex: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 0;
+            border-radius: 999px !important;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s;
+            border: none;
+        }
+
+        .sb-btn-clear {
+            background: #fef2f2 !important;
+            color: #ef4444 !important;
+            border: 1px solid #fca5a5 !important;
+        }
+
+        .sb-btn-clear:hover {
+            background: #fee2e2 !important;
+        }
+
+        .sb-btn-download {
+            background: #2563eb !important;
+            color: #ffffff !important;
+            box-shadow: 0 1px 3px rgba(37, 99, 235, 0.4);
+        }
+
+        .sb-btn-download:hover {
+            background: #1d4ed8 !important;
+        }
+
+        /* 目录标题：蓝渐变底条+左侧黄色 accent，与产品画册的分类标题条同款，醒目且风格统一 */
+        .sidebar-title {
+            position: relative;
+            font-size: 15px;
+            font-weight: 900;
+            letter-spacing: 2px;
+            color: #ffffff;
+            padding: 14px 16px 14px 21px;
+            text-transform: uppercase;
+            background: linear-gradient(90deg, #1e3a8a, #3b82f6 70%, #60a5fa);
+        }
+
+        .sidebar-title::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 5px;
+            background: #fbbf24;
+        }
+
+        .mega-group-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 16px;
+            min-height: 48px;
+            font-size: 15px;
+            font-weight: 700;
+            color: #374151;
+            cursor: pointer;
+            transition: all 0.15s;
+            border-left: 3px solid transparent;
+            user-select: none;
+        }
+
+        .mega-group-item:hover {
+            background: #f1f5f9;
+        }
+
+        .mega-group-item.active {
+            background: #2563eb;
+            color: #ffffff;
+            border-left-color: #1e40af;
+        }
+
+        .mega-group-name {
+            flex: 1;
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
+            overflow: hidden;
+            word-break: break-word;
+        }
+
+        .mega-group-right {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 6px;
+            flex: 0 0 52px;
+        }
+
+        .mega-count {
+            min-width: 22px;
+            height: 22px;
+            padding: 0 6px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #e2e8f0;
+            color: #64748b;
+            transition: all 0.2s;
+        }
+
+        .mega-group-item.active .mega-count {
+            background: rgba(255, 255, 255, 0.28);
+            color: #ffffff;
+        }
+
+        .mega-count.has-items {
+            background: #ef4444;
+            color: white;
+        }
+
+        .mega-group-item.active .mega-count.has-items {
+            background: #ef4444;
+            color: white;
+        }
+
+        .mega-arrow {
+            font-size: 12px;
+            color: #94a3b8;
+            transition: transform 0.2s;
+        }
+
+        .mega-group-item.active .mega-arrow {
+            transform: rotate(90deg);
+            color: #ffffff;
+        }
+
+        .mega-sub-list {
+            display: grid;
+            grid-template-rows: 0fr;
+            background: #ffffff;
+            transition: grid-template-rows 0.28s ease;
+        }
+
+        .mega-sub-list.open {
+            grid-template-rows: 1fr;
+        }
+
+        .mega-sub-inner {
+            overflow: hidden;
+        }
+
+        .mega-sub-inner>.mega-sub-item:first-child {
+            border-top: 1px solid #f1f5f9;
+        }
+
+        .mega-sub-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 16px 10px 28px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #6b7280;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .mega-sub-item:hover {
+            background: #f9fafb;
+            color: #374151;
+        }
+
+        .mega-sub-item.active {
+            color: #1e40af;
+            font-weight: 700;
+            background: #dbeafe;
+            box-shadow: inset 3px 0 0 #2563eb;
+        }
+
+        .mega-sub-item>span:first-child {
+            flex: 1;
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
+            overflow: hidden;
+            word-break: break-word;
+        }
+
+        .sub-count {
+            min-width: 20px;
+            height: 20px;
+            padding: 0 6px;
+            margin-left: 8px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #f1f5f9;
+            color: #9ca3af;
+            flex-shrink: 0;
+        }
+
+        .mega-sub-item.active .sub-count {
+            background: #bfdbfe;
+            color: #1d4ed8;
+        }
+
+        .mega-sub-item.active .sub-count.has-items {
+            background: #ef4444;
+            color: #ffffff;
+        }
+
+        .mega-sub-group-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 16px 8px 28px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #475569;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .mega-sub-group-item:hover {
+            background: #f9fafb;
+        }
+
+        .mega-sub-group-name {
+            flex: 1;
+            line-height: 1.5;
+        }
+
+        .mega-sub-group-right {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 6px;
+            flex: 0 0 40px;
+        }
+
+        .sub-arrow {
+            font-size: 11px;
+            color: #94a3b8;
+            transition: transform 0.2s;
+        }
+
+        .mega-sub-group-item.open .sub-arrow {
+            transform: rotate(90deg);
+            color: #3b82f6;
+        }
+
+        .mega-sub-item--l3 {
+            margin: 1px 10px 1px 26px;
+            border-radius: 999px;
+            padding: 6px 12px;
+        }
+
+        .mega-sub-item--l3.active {
+            background: #e0f2fe;
+            color: #0369a1;
+            box-shadow: none;
+        }
+
+        .l3-dot {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #cbd5e1;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        .mega-sub-item--l3.active .l3-dot {
+            background: #0284c7;
+        }
+
+        .sub-count.has-items {
+            background: #ef4444;
+            color: white;
+        }
+
+        .mobile-bar {
+            display: none;
+        }
+
+        .mb-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 8px 0 6px;
+            background: none;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            color: #1f2937;
+            font-family: inherit;
+        }
+
+        .mb-item:active {
+            background: rgba(15, 23, 42, .06);
+        }
+
+        /* 统计数字：红色数字（购物车角标惯例）+ 34px 固定圆形底，与动作图标完全同尺寸对齐 */
+        .mb-num {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 34px;
+            height: 34px;
+            padding: 0 4px;
+            border-radius: 999px;
+            background: #e2e8f0;
+            color: #dc2626;
+            font-size: 16px;
+            font-weight: 900;
+            line-height: 1;
+        }
+
+        /* 动作图标：统一 34px 圆形徽章 */
+        .mb-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: #e2e8f0;
+            color: #334155;
+            font-size: 15px;
+            line-height: 1;
+        }
+
+        .mb-label {
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: .3px;
+            color: #1f2937;
+        }
+
+        .mb-download .mb-icon {
+            background: #2563eb;
+            color: #ffffff;
+        }
+
+        .mb-clear .mb-icon {
+            background: #ef4444;
+            color: #ffffff;
+        }
+
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 49;
+        }
+
+        .sidebar-overlay.open {
+            display: block;
+        }
+
+        @media (max-width: 1023px) {
+            .sidebar {
+                top: var(--promo-h) !important;
+                width: min(340px, 88vw);
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+                z-index: 200;
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            /* 移动端底部栏：白底黑字，浅色清爽风格 */
+            .mobile-bar {
+                display: flex;
+                position: fixed;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                z-index: 250;
+                background: #ffffff;
+                border-top: 1px solid #e2e8f0;
+                box-shadow: 0 -2px 10px rgba(15, 23, 42, .08);
+                padding: 8px 6px calc(8px + env(safe-area-inset-bottom, 0px));
+                gap: 4px;
+            }
+
+            /* P0-1 抽屉滚动区底部避让：移动端底栏 z-index(250) 高于抽屉(200)，且
+               .sidebar-footer 在手机上是 display:none（原本由它占掉 117px），
+               不留避让的话最靠下的一级分组会被底栏吃掉、无论怎么滚都点不到 */
+            .sidebar-scroll {
+                padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+            }
+
+            .sidebar-footer {
+                display: none;
+            }
+
+            /* P0-2 预留高度跟随安全区：底栏实际高 88.8px，带 home indicator 的机型上
+               还要再加 env(safe-area-inset-bottom)（≈ 34px 时共 122.8px），
+               写死 70px 会让最后一行的数量输入框被底栏压住、点不到 */
+            #main-wrapper {
+                padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
+            }
+        }
+
+        /* ===== 顶部促销跑马灯通知栏 ===== */
+        :root {
+            --promo-h: 42px;
+        }
+
+        .promo-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: var(--promo-h);
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+            background: linear-gradient(90deg, #0f172a, #1e293b 50%, #0f172a);
+            color: #ffffff;
+            z-index: 400;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, .35);
+        }
+
+        /* 左侧固定标签：黄底黑字，与侧边栏标题的黄色 accent 呼应 */
+        .promo-label {
+            flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            height: 100%;
+            padding: 0 14px;
+            background: #fbbf24;
+            color: #0f172a;
+            font-size: 13px;
+            font-weight: 900;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            white-space: nowrap;
+            z-index: 2;
+            box-shadow: 3px 0 10px rgba(0, 0, 0, .35);
+        }
+
+        /* 右侧滚动轨道 */
+        .promo-track {
+            flex: 1;
+            display: flex;
+            width: max-content;
+            animation-name: promo-marquee;
+            animation-timing-function: linear;
+            animation-iteration-count: infinite;
+        }
+
+        .promo-track:hover {
+            animation-play-state: paused;
+        }
+
+        .promo-track .promo-item {
+            padding: 0 32px;
+            white-space: nowrap;
+            font-size: 14px;
+            font-weight: 600;
+            line-height: var(--promo-h);
+            color: #f8fafc;
+        }
+
+        /* 文案里可用 <b> 高亮关键词，显示为主题黄 */
+        .promo-track .promo-item b {
+            color: #fbbf24;
+            font-weight: 800;
+        }
+
+        @keyframes promo-marquee {
+            from {
+                transform: translateX(0);
+            }
+
+            to {
+                transform: translateX(-50%);
+            }
+        }
+
+        /* 顶部通知栏占位：把主体内容与侧边栏整体下移，避免遮挡 */
+        #main-wrapper {
+            padding-top: var(--promo-h) !important;
+        }
+
+        @media (max-width: 640px) {
+            .promo-track .promo-item {
+                font-size: 13px;
+                padding: 0 22px;
+            }
+
+            .promo-label {
+                padding: 0 10px;
+                font-size: 12px;
+            }
+        }
+
+        /* 桌面端产品网格：固定 8 列，单列最大 195.56px（与原版卡片尺寸一致）；
+           屏幕空间不足时列宽自动收缩，避免横向溢出。
+           注：Tailwind 配置了 important:true，此处必须加 !important 才能覆盖 md:grid-cols-5 */
+        @media (min-width: 1024px) {
+            #product-grid {
+                grid-template-columns: repeat(8, minmax(0, 195.56px)) !important;
+                justify-content: center;
+            }
+        }
+    </style>
+
+    <!-- Tailwind 静态样式（方案 1 产物）：置于自定义 <style> 之后、</head> 之前，
+         与原 Play CDN 运行时将 <style> 追加到 head 末尾的顺序一致，确保层叠关系不变 -->
+    <link rel="stylesheet" href="tailwind.css">
+</head>
+<!-- 🌟 核心修复：增加 overflow-y-scroll 强制显示垂直滚动条轨道，防止切换分类时页面左右跳动 -->
+
+<body id="main-wrapper" class="bg-gray-50 pb-10 min-h-screen box-border transition-all duration-300 overflow-y-scroll">
+
+    <!-- ===== 顶部促销跑马灯通知栏（内容与速度在下方脚本的 PROMO_CONFIG 中修改）===== -->
+    <div class="promo-bar" id="promo-bar">
+        <div class="promo-label"><i class="fa-solid fa-bullhorn" aria-hidden="true"></i><span>Notice</span></div>
+        <div class="promo-track" id="promo-track"></div>
+    </div>
+
+    <!-- 侧边栏 Mega Menu -->
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-title">Categories</div>
+        <div class="sidebar-scroll">
+            <div id="sidebar-menu"></div>
+        </div>
+        <!-- 侧边栏底部：统计与操作（原页眉内容移至此处，空出右侧浏览区） -->
+        <div class="sidebar-footer">
+            <div class="sidebar-stats">
+                <div class="stat-cell">
+                    <span class="stat-num" id="total-items">0</span>
+                    <span class="stat-label">Selected</span>
+                </div>
+                <div class="stat-cell">
+                    <span class="stat-num" id="total-qty">0</span>
+                    <span class="stat-label">Total Qty</span>
+                </div>
+            </div>
+            <div class="sidebar-actions">
+                <button onclick="resetAll()" class="sb-btn-clear" title="Clear All">Clear</button>
+                <button onclick="showDownloadModal()" class="sb-btn-download">Download</button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- 移动端底部操作栏：5 个等宽模块（Selected / Total Qty / Menu / Download / Clear） -->
+    <nav class="mobile-bar" id="mobile-bar">
+        <div class="mb-item">
+            <span class="mb-num" id="m-total-items">0</span>
+            <span class="mb-label">Selected</span>
+        </div>
+        <div class="mb-item">
+            <span class="mb-num" id="m-total-qty">0</span>
+            <span class="mb-label">Total Qty</span>
+        </div>
+        <button class="mb-item" onclick="toggleSidebar()">
+            <span class="mb-icon"><i class="fa-solid fa-bars" aria-hidden="true"></i></span>
+            <span class="mb-label">Menu</span>
+        </button>
+        <button class="mb-item mb-download" onclick="showDownloadModal()">
+            <span class="mb-icon"><i class="fa-solid fa-download" aria-hidden="true"></i></span>
+            <span class="mb-label">Download</span>
+        </button>
+        <button class="mb-item mb-clear" onclick="resetAll()">
+            <span class="mb-icon"><i class="fa-solid fa-xmark" aria-hidden="true"></i></span>
+            <span class="mb-label">Clear</span>
+        </button>
+    </nav>
+
+    <!-- 产品列表主体 -->
+    <main id="main-content" class="px-2 py-4 lg:ml-[288px]">
+        <div id="product-grid" class="grid grid-cols-3 md:grid-cols-5 gap-2 md:gap-4">
+            <!-- JS生成内容 -->
+        </div>
+    </main>
+
+    <!-- 图片放大弹窗层级提升到 z-[9999] -->
+    <div id="lightbox"
+        class="fixed inset-0 z-[9999] bg-black/90 hidden flex items-center justify-center opacity-0 transition-opacity duration-300"
+        onclick="closeLightbox()">
+        <span class="absolute top-4 right-4 text-white text-4xl cursor-pointer hover:text-gray-300">&times;</span>
+        <img id="lightbox-img" src=""
+            class="max-w-[95%] max-h-[90vh] object-contain rounded-lg shadow-2xl transform scale-95 transition-transform duration-300">
+    </div>
+
+    <!-- 下载弹窗层级提升到 z-[9999] -->
+    <div id="download-modal"
+        class="fixed inset-0 z-[9999] bg-black/60 hidden flex items-center justify-center opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-xl p-6 w-[90%] max-w-sm transform scale-95 transition-transform duration-300"
+            id="download-modal-content">
+            <h3 class="text-lg font-bold text-gray-800 mb-2 m-0">Export Order Form</h3>
+            <p class="text-sm text-gray-500 mb-4 m-0">Please enter your name (English) to generate the file.</p>
+            <input type="text" id="customer-name" placeholder="e.g. Michael" maxlength="20"
+                class="w-full border border-gray-300 rounded-lg px-3 py-2 mb-5 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all bg-white"
+                style="border: 1px solid #d1d5db !important;">
+            <div class="flex justify-end space-x-3">
+                <button onclick="closeDownloadModal()"
+                    class="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-bold transition-colors border-none"
+                    style="background-color: #f3f4f6 !important; color: #4b5563 !important;">Cancel</button>
+                <button onclick="confirmDownload()"
+                    class="px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-bold shadow-md transition-colors border-none"
+                    style="background-color: #2563eb !important; color: white !important;">Confirm</button>
+            </div>
+        </div>
+    </div>
+    <!-- 提示弹窗（替代浏览器原生 alert）开始 -->
+    <!-- 起订量不够、没选型号、没填名字这三种提示统一走这里：
+         原生 alert 挂在窗口顶部、样式不受控，和页面里已有的下载弹窗不是一套东西。 -->
+    <div id="notice-modal"
+        class="fixed inset-0 z-[9999] bg-black/60 hidden flex items-center justify-center opacity-0 transition-opacity duration-300"
+        onclick="if (event.target === this) closeNotice();">
+        <div class="bg-white rounded-xl p-6 w-[90%] max-w-sm transform scale-95 transition-transform duration-300"
+            id="notice-modal-content">
+            <h3 class="text-lg font-bold text-gray-800 mb-2 m-0" id="notice-title">Notice</h3>
+            <p class="text-sm text-gray-500 mb-5 m-0" id="notice-text"></p>
+            <div class="flex justify-end space-x-3">
+                <button onclick="closeNotice()"
+                    class="px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-bold shadow-md transition-colors border-none"
+                    style="background-color: #2563eb !important; color: white !important;">OK</button>
+            </div>
+        </div>
+    </div>
+    <!-- 提示弹窗（替代浏览器原生 alert）结束 -->
+
+    <script>
+        // ============================================================
+        // 🚫 禁用右键（防 casual 复制；如需恢复，删除本段即可）
+        //   例外：输入框 / textarea / contenteditable 内不禁用，
+        //   保留系统“粘贴”菜单，不影响客户姓名 / 数量输入等正常场景。
+        //   实现上用 addEventListener（不会覆盖任何已有处理器），
+        //   只调 preventDefault（不阻断冒泡、不影响其他事件）。
+        // ============================================================
+        document.addEventListener('contextmenu', function (e) {
+            const t = e.target;
+            if (!t) { e.preventDefault(); return; }
+            const tag = t.tagName;
+            const isEditable = t.isContentEditable === true;
+            const isTextarea = tag === 'TEXTAREA';
+            const isTextInput = tag === 'INPUT' &&
+                !/^(button|submit|reset|checkbox|radio|file|image|hidden|range|color)$/i.test(t.type || 'text');
+            if (isEditable || isTextarea || isTextInput) return; // 输入区内放行右键
+            e.preventDefault();
+        });
+
+        // ============================================================
+        // 📢 顶部促销跑马灯配置区（在这里改内容和速度）
+        // ============================================================
+        const PROMO_CONFIG = {
+            /* GEN:PROMO BEGIN 此区块由生成工具托管，请勿手改 */
+            // 1) 是否显示通知栏：true = 显示，false = 隐藏（隐藏后页面自动回到无栏状态）
+            enabled: true,
+
+            // 2) 滚动速度：数字 = 滚一轮所需的秒数。
+            //    数字越小越快，越大越慢（推荐 15~40，默认 25）
+            speed: 25,
+
+            // 3) 通知内容：数组里每一项会首尾相连循环滚动，可只写一条，也可写多条。
+            //    文案中用 <b></b> 包裹的部分会高亮成黄色（例：“<b>50% OFF</b>”）。
+            items: [
+                '🔥 <b>Everything In Stock!</b> All items ready to ship — no waiting, order today!',
+                '✨ <b>Grading Slab Protection!</b> PSA / BGS / ACE / CGC / TAG back panels — find yours now!'
+            ]
+            /* GEN:PROMO END */
+        };
+
+        function initPromo() {
+            const bar = document.getElementById('promo-bar');
+            const track = document.getElementById('promo-track');
+            if (!bar || !track) return;
+            if (!PROMO_CONFIG.enabled || !PROMO_CONFIG.items || PROMO_CONFIG.items.length === 0) {
+                bar.style.display = 'none';
+                document.documentElement.style.setProperty('--promo-h', '0px');
+                return;
+            }
+            const html = PROMO_CONFIG.items
+                .map(t => `<span class="promo-item">${t}</span>`)
+                .join('');
+            // 内容重复一份，配合 translateX(-50%) 实现无缝循环
+            track.innerHTML = html + html;
+            track.style.animationDuration = (PROMO_CONFIG.speed || 25) + 's';
+        }
+        // ============================================================
+
+        // ================= 配置区域 =================
+        // ⚠️ 请在此处粘贴您完整的 products 数组替换下面的示例数据
+        const products = [
+            /* GEN:PRODUCTS BEGIN 此区块由生成工具托管，请勿手改 */
+            // PSA With back panel
+            { id: 'HY029-D', category: 'PSA Back Single Panel', name: 'HY029-D', image: 'https://hande.zzydhj.com/hande/HY029-D.jpg' },
+            { id: 'HY036-D', category: 'PSA Back Single Panel', name: 'HY036-D', image: 'https://hande.zzydhj.com/hande/HY036-D.jpg' },
+            { id: 'HY045-D', category: 'PSA Back Single Panel', name: 'HY045-D', image: 'https://hande.zzydhj.com/hande/HY045-D.jpg' },
+            { id: 'HY046-D', category: 'PSA Back Single Panel', name: 'HY046-D', image: 'https://hande.zzydhj.com/hande/HY046-D.jpg' },
+            { id: 'HY050-D', category: 'PSA Back Single Panel', name: 'HY050-D', image: 'https://hande.zzydhj.com/hande/HY050-D.jpg' },
+            { id: 'HY053-D', category: 'PSA Back Single Panel', name: 'HY053-D', image: 'https://hande.zzydhj.com/hande/HY053-D.jpg' },
+            { id: 'HY064-D', category: 'PSA Back Single Panel', name: 'HY064-D', image: 'https://hande.zzydhj.com/hande/HY064-D.jpg' },
+            { id: 'HY066-D', category: 'PSA Back Single Panel', name: 'HY066-D', image: 'https://hande.zzydhj.com/hande/HY066-D.jpg' },
+            { id: 'HY071-D', category: 'PSA Back Single Panel', name: 'HY071-D', image: 'https://hande.zzydhj.com/hande/HY071-D.jpg' },
+            { id: 'HY001-D', category: 'PSA Back Single Panel', name: 'HY001-D', image: 'https://hande.zzydhj.com/hande/HY001-D.jpg' },
+            { id: 'HY002-D', category: 'PSA Back Single Panel', name: 'HY002-D', image: 'https://hande.zzydhj.com/hande/HY002-D.jpg' },
+            { id: 'HY005-D', category: 'PSA Back Single Panel', name: 'HY005-D', image: 'https://hande.zzydhj.com/hande/HY005-D.jpg' },
+            { id: 'HY006-D', category: 'PSA Back Single Panel', name: 'HY006-D', image: 'https://hande.zzydhj.com/hande/HY006-D.jpg' },
+            { id: 'HY013-D', category: 'PSA Back Single Panel', name: 'HY013-D', image: 'https://hande.zzydhj.com/hande/HY013-D.jpg' },
+            { id: 'HY021-D', category: 'PSA Back Single Panel', name: 'HY021-D', image: 'https://hande.zzydhj.com/hande/HY021-D.jpg' },
+            { id: 'HY023-D', category: 'PSA Back Single Panel', name: 'HY023-D', image: 'https://hande.zzydhj.com/hande/HY023-D.jpg' },
+            { id: 'HY025-D', category: 'PSA Back Single Panel', name: 'HY025-D', image: 'https://hande.zzydhj.com/hande/HY025-D.jpg' },
+            { id: 'HY026-D', category: 'PSA Back Single Panel', name: 'HY026-D', image: 'https://hande.zzydhj.com/hande/HY026-D.jpg' },
+            { id: 'Deep HY026-D', category: 'PSA Back Single Panel', name: 'Deep HY026-D', image: 'https://hande.zzydhj.com/hande/Deep_HY026-D.png' },
+            { id: 'HY027-D', category: 'PSA Back Single Panel', name: 'HY027-D', image: 'https://hande.zzydhj.com/hande/HY027-D.jpg' },
+            { id: 'HY028-D', category: 'PSA Back Single Panel', name: 'HY028-D', image: 'https://hande.zzydhj.com/hande/HY028-D.jpg' },
+            { id: 'HY030-D', category: 'PSA Back Single Panel', name: 'HY030-D', image: 'https://hande.zzydhj.com/hande/HY030-D.jpg' },
+            { id: 'HY031-D', category: 'PSA Back Single Panel', name: 'HY031-D', image: 'https://hande.zzydhj.com/hande/HY031-D.jpg' },
+            { id: 'HY032-D', category: 'PSA Back Single Panel', name: 'HY032-D', image: 'https://hande.zzydhj.com/hande/HY032-D.jpg' },
+            { id: 'HY033-D', category: 'PSA Back Single Panel', name: 'HY033-D', image: 'https://hande.zzydhj.com/hande/HY033-D.jpg' },
+            { id: 'HY034-D', category: 'PSA Back Single Panel', name: 'HY034-D', image: 'https://hande.zzydhj.com/hande/HY034-D.jpg' },
+            { id: 'HY035-D', category: 'PSA Back Single Panel', name: 'HY035-D', image: 'https://hande.zzydhj.com/hande/HY035-D.jpg' },
+            { id: 'HY037-D', category: 'PSA Back Single Panel', name: 'HY037-D', image: 'https://hande.zzydhj.com/hande/HY037-D.jpg' },
+            { id: 'HY038-D', category: 'PSA Back Single Panel', name: 'HY038-D', image: 'https://hande.zzydhj.com/hande/HY038-D.jpg' },
+            { id: 'HY048-D', category: 'PSA Back Single Panel', name: 'HY048-D', image: 'https://hande.zzydhj.com/hande/HY048-D.jpg' },
+            { id: 'HY049-D', category: 'PSA Back Single Panel', name: 'HY049-D', image: 'https://hande.zzydhj.com/hande/HY049-D.jpg' },
+            { id: 'HY051-D', category: 'PSA Back Single Panel', name: 'HY051-D', image: 'https://hande.zzydhj.com/hande/HY051-D.jpg' },
+            { id: 'HY052-D', category: 'PSA Back Single Panel', name: 'HY052-D', image: 'https://hande.zzydhj.com/hande/HY052-D.jpg' },
+            { id: 'HY054-D', category: 'PSA Back Single Panel', name: 'HY054-D', image: 'https://hande.zzydhj.com/hande/HY054-D.jpg' },
+            { id: 'HY056-D', category: 'PSA Back Single Panel', name: 'HY056-D', image: 'https://hande.zzydhj.com/hande/HY056-D.jpg' },
+            { id: 'HY057-D', category: 'PSA Back Single Panel', name: 'HY057-D', image: 'https://hande.zzydhj.com/hande/HY057-D.jpg' },
+            { id: 'HY058-D', category: 'PSA Back Single Panel', name: 'HY058-D', image: 'https://hande.zzydhj.com/hande/HY058-D.jpg' },
+            { id: 'HY059-D', category: 'PSA Back Single Panel', name: 'HY059-D', image: 'https://hande.zzydhj.com/hande/HY059-D.jpg' },
+            { id: 'HY060-D', category: 'PSA Back Single Panel', name: 'HY060-D', image: 'https://hande.zzydhj.com/hande/HY060-D.jpg' },
+            { id: 'HY061-D', category: 'PSA Back Single Panel', name: 'HY061-D', image: 'https://hande.zzydhj.com/hande/HY061-D.jpg' },
+            { id: 'HY062-D', category: 'PSA Back Single Panel', name: 'HY062-D', image: 'https://hande.zzydhj.com/hande/HY062-D.jpg' },
+            { id: 'HY063-D', category: 'PSA Back Single Panel', name: 'HY063-D', image: 'https://hande.zzydhj.com/hande/HY063-D.jpg' },
+            { id: 'HY065-D', category: 'PSA Back Single Panel', name: 'HY065-D', image: 'https://hande.zzydhj.com/hande/HY065-D.png' },
+            { id: 'HY067-D', category: 'PSA Back Single Panel', name: 'HY067-D', image: 'https://hande.zzydhj.com/hande/HY067-D.jpg' },
+            { id: 'HY068-D', category: 'PSA Back Single Panel', name: 'HY068-D', image: 'https://hande.zzydhj.com/hande/HY068-D.jpg' },
+            { id: 'HY069-D', category: 'PSA Back Single Panel', name: 'HY069-D', image: 'https://hande.zzydhj.com/hande/HY069-D.jpg' },
+            { id: 'HY070-D', category: 'PSA Back Single Panel', name: 'HY070-D', image: 'https://hande.zzydhj.com/hande/HY070-D.jpg' },
+            { id: 'HY072-D', category: 'PSA Back Single Panel', name: 'HY072-D', image: 'https://hande.zzydhj.com/hande/HY072-D.jpg' },
+            { id: 'HY073-D', category: 'PSA Single Panel No Glitter', name: 'HY073-D', image: 'https://hande.zzydhj.com/hande/HY073-D.jpg' },
+            { id: 'HY074-D', category: 'PSA Single Panel No Glitter', name: 'HY074-D', image: 'https://hande.zzydhj.com/hande/HY074-D.jpg' },
+            { id: 'HY075-D', category: 'PSA Single Panel No Glitter', name: 'HY075-D', image: 'https://hande.zzydhj.com/hande/HY075-D.jpg' },
+            { id: 'HY076-D', category: 'PSA Single Panel No Glitter', name: 'HY076-D', image: 'https://hande.zzydhj.com/hande/HY076-D.jpg' },
+            { id: 'HY077-D', category: 'PSA Single Panel No Glitter', name: 'HY077-D', image: 'https://hande.zzydhj.com/hande/HY077-D.jpg' },
+            { id: 'PSAD-029', category: 'PSA with Double panels', name: 'PSAD-029', image: 'https://hande.zzydhj.com/hande/PSAD-029.jpg' },
+            { id: 'PSAD-036', category: 'PSA with Double panels', name: 'PSAD-036', image: 'https://hande.zzydhj.com/hande/PSAD-036.jpg' },
+            { id: 'PSAD-045A', category: 'PSA with Double panels', name: 'PSAD-045A', image: 'https://hande.zzydhj.com/hande/PSAD-045A.jpg' },
+            { id: 'PSAD-046A', category: 'PSA with Double panels', name: 'PSAD-046A', image: 'https://hande.zzydhj.com/hande/PSAD-046A.jpg' },
+            { id: 'PSAD-050A', category: 'PSA with Double panels', name: 'PSAD-050A', image: 'https://hande.zzydhj.com/hande/PSAD-050A.jpg' },
+            { id: 'PSAD-053', category: 'PSA with Double panels', name: 'PSAD-053', image: 'https://hande.zzydhj.com/hande/PSAD-053.jpg' },
+            { id: 'PSAD-066', category: 'PSA with Double panels', name: 'PSAD-066', image: 'https://hande.zzydhj.com/hande/PSAD-066.jpg' },
+            { id: 'PSAD-067', category: 'PSA with Double panels', name: 'PSAD-067', image: 'https://hande.zzydhj.com/hande/PSAD-067.jpg' },
+            { id: 'PSAD-068', category: 'PSA with Double panels', name: 'PSAD-068', image: 'https://hande.zzydhj.com/hande/PSAD-068.jpg' },
+            { id: 'PSAD-069', category: 'PSA with Double panels', name: 'PSAD-069', image: 'https://hande.zzydhj.com/hande/PSAD-069.jpg' },
+            { id: 'PSAD-070', category: 'PSA with Double panels', name: 'PSAD-070', image: 'https://hande.zzydhj.com/hande/PSAD-070.jpg' },
+            { id: 'PSAD-002', category: 'PSA with Double panels', name: 'PSAD-002', image: 'https://hande.zzydhj.com/hande/PSAD-002.jpg' },
+            { id: 'PSAD-005', category: 'PSA with Double panels', name: 'PSAD-005', image: 'https://hande.zzydhj.com/hande/PSAD-005.jpg' },
+            { id: 'PSAD-021', category: 'PSA with Double panels', name: 'PSAD-021', image: 'https://hande.zzydhj.com/hande/PSAD-021.jpg' },
+            { id: 'PSAD-026', category: 'PSA with Double panels', name: 'PSAD-026', image: 'https://hande.zzydhj.com/hande/PSAD-026.jpg' },
+            { id: 'PSAD-027', category: 'PSA with Double panels', name: 'PSAD-027', image: 'https://hande.zzydhj.com/hande/PSAD-027.jpg' },
+            { id: 'PSAD-031', category: 'PSA with Double panels', name: 'PSAD-031', image: 'https://hande.zzydhj.com/hande/PSAD-031.jpg' },
+            { id: 'PSAD-033', category: 'PSA with Double panels', name: 'PSAD-033', image: 'https://hande.zzydhj.com/hande/PSAD-033.jpg' },
+            { id: 'PSAD-048', category: 'PSA with Double panels', name: 'PSAD-048', image: 'https://hande.zzydhj.com/hande/PSAD-048.jpg' },
+            { id: 'PSAD-049', category: 'PSA with Double panels', name: 'PSAD-049', image: 'https://hande.zzydhj.com/hande/PSAD-049.jpg' },
+            { id: 'PSAD-054', category: 'PSA with Double panels', name: 'PSAD-054', image: 'https://hande.zzydhj.com/hande/PSAD-054.jpg' },
+            { id: 'PSAD-056', category: 'PSA with Double panels', name: 'PSAD-056', image: 'https://hande.zzydhj.com/hande/PSAD-056.jpg' },
+            { id: 'PSAD-071', category: 'PSA Magnetic Double Panels', name: 'PSAD-071', image: 'https://hande.zzydhj.com/hande/PSAD-071.jpg' },
+            { id: 'PSAD-072', category: 'PSA Magnetic Double Panels', name: 'PSAD-072', image: 'https://hande.zzydhj.com/hande/PSAD-072.jpg' },
+            { id: 'PSAD-073', category: 'PSA Magnetic Double Panels', name: 'PSAD-073', image: 'https://hande.zzydhj.com/hande/PSAD-073.jpg' },
+            { id: 'PSAD-074', category: 'PSA Magnetic Double Panels', name: 'PSAD-074', image: 'https://hande.zzydhj.com/hande/PSAD-074.jpg' },
+            { id: 'BGS002-D', category: 'BGS with panel', name: 'BGS002-D', image: 'https://hande.zzydhj.com/hande/BGS002-D.jpg' },
+            { id: 'BGS005-D', category: 'BGS with panel', name: 'BGS005-D', image: 'https://hande.zzydhj.com/hande/BGS005-D.jpg' },
+            { id: 'BGS021-D', category: 'BGS with panel', name: 'BGS021-D', image: 'https://hande.zzydhj.com/hande/BGS021-D.jpg' },
+            { id: 'BGS026-D', category: 'BGS with panel', name: 'BGS026-D', image: 'https://hande.zzydhj.com/hande/BGS026-D.jpg' },
+            { id: 'BGS027-D', category: 'BGS with panel', name: 'BGS027-D', image: 'https://hande.zzydhj.com/hande/BGS027-D.jpg' },
+            { id: 'BGS029-D', category: 'BGS with panel', name: 'BGS029-D', image: 'https://hande.zzydhj.com/hande/BGS029-D.jpg' },
+            { id: 'BGS031-D', category: 'BGS with panel', name: 'BGS031-D', image: 'https://hande.zzydhj.com/hande/BGS031-D.jpg' },
+            { id: 'BGS033-D', category: 'BGS with panel', name: 'BGS033-D', image: 'https://hande.zzydhj.com/hande/BGS033-D.jpg' },
+            { id: 'BGS036-D', category: 'BGS with panel', name: 'BGS036-D', image: 'https://hande.zzydhj.com/hande/BGS036-D.jpg' },
+            { id: 'BGS048-D', category: 'BGS with panel', name: 'BGS048-D', image: 'https://hande.zzydhj.com/hande/BGS048-D.jpg' },
+            { id: 'BGS049-D', category: 'BGS with panel', name: 'BGS049-D', image: 'https://hande.zzydhj.com/hande/BGS049-D.jpg' },
+            { id: 'BGS053-D', category: 'BGS with panel', name: 'BGS053-D', image: 'https://hande.zzydhj.com/hande/BGS053-D.jpg' },
+            { id: 'BGS054-D', category: 'BGS with panel', name: 'BGS054-D', image: 'https://hande.zzydhj.com/hande/BGS054-D.jpg' },
+            { id: 'BGS056-D', category: 'BGS with panel', name: 'BGS056-D', image: 'https://hande.zzydhj.com/hande/BGS056-D.jpg' },
+            { id: 'BGS073-D', category: 'BGS Single Panel No Glitter', name: 'BGS073-D', image: 'https://hande.zzydhj.com/hande/HY073-D.jpg' },
+            { id: 'BGS074-D', category: 'BGS Single Panel No Glitter', name: 'BGS074-D', image: 'https://hande.zzydhj.com/hande/HY074-D.jpg' },
+            { id: 'BGS075-D', category: 'BGS Single Panel No Glitter', name: 'BGS075-D', image: 'https://hande.zzydhj.com/hande/HY075-D.jpg' },
+            { id: 'BGS076-D', category: 'BGS Single Panel No Glitter', name: 'BGS076-D', image: 'https://hande.zzydhj.com/hande/HY076-D.jpg' },
+            { id: 'BGS077-D', category: 'BGS Single Panel No Glitter', name: 'BGS077-D', image: 'https://hande.zzydhj.com/hande/HY077-D.jpg' },
+            { id: 'ACE002-D', category: 'ACE with panel', name: 'ACE002-D', image: 'https://hande.zzydhj.com/hande/ACE002-D.jpg' },
+            { id: 'ACE005-D', category: 'ACE with panel', name: 'ACE005-D', image: 'https://hande.zzydhj.com/hande/ACE005-D.jpg' },
+            { id: 'ACE021-D', category: 'ACE with panel', name: 'ACE021-D', image: 'https://hande.zzydhj.com/hande/ACE021-D.jpg' },
+            { id: 'ACE026-D', category: 'ACE with panel', name: 'ACE026-D', image: 'https://hande.zzydhj.com/hande/ACE026-D.jpg' },
+            { id: 'ACE027-D', category: 'ACE with panel', name: 'ACE027-D', image: 'https://hande.zzydhj.com/hande/ACE027-D.jpg' },
+            { id: 'ACE029-D', category: 'ACE with panel', name: 'ACE029-D', image: 'https://hande.zzydhj.com/hande/ACE029-D.jpg' },
+            { id: 'ACE031-D', category: 'ACE with panel', name: 'ACE031-D', image: 'https://hande.zzydhj.com/hande/ACE031-D.jpg' },
+            { id: 'ACE033-D', category: 'ACE with panel', name: 'ACE033-D', image: 'https://hande.zzydhj.com/hande/ACE033-D.jpg' },
+            { id: 'ACE048-D', category: 'ACE with panel', name: 'ACE048-D', image: 'https://hande.zzydhj.com/hande/ACE048-D.jpg' },
+            { id: 'ACE049-D', category: 'ACE with panel', name: 'ACE049-D', image: 'https://hande.zzydhj.com/hande/ACE049-D.jpg' },
+            { id: 'ACE054-D', category: 'ACE with panel', name: 'ACE054-D', image: 'https://hande.zzydhj.com/hande/ACE054-D.jpg' },
+            { id: 'CGC002-D', category: 'CGC with panel', name: 'CGC002-D', image: 'https://hande.zzydhj.com/hande/CGC002-D.jpg' },
+            { id: 'CGC005-D', category: 'CGC with panel', name: 'CGC005-D', image: 'https://hande.zzydhj.com/hande/CGC005-D.jpg' },
+            { id: 'CGC021-D', category: 'CGC with panel', name: 'CGC021-D', image: 'https://hande.zzydhj.com/hande/CGC021-D.jpg' },
+            { id: 'CGC026-D', category: 'CGC with panel', name: 'CGC026-D', image: 'https://hande.zzydhj.com/hande/CGC026-D.jpg' },
+            { id: 'CGC027-D', category: 'CGC with panel', name: 'CGC027-D', image: 'https://hande.zzydhj.com/hande/CGC027-D.jpg' },
+            { id: 'CGC029-D', category: 'CGC with panel', name: 'CGC029-D', image: 'https://hande.zzydhj.com/hande/CGC029-D.jpg' },
+            { id: 'CGC031-D', category: 'CGC with panel', name: 'CGC031-D', image: 'https://hande.zzydhj.com/hande/CGC031-D.jpg' },
+            { id: 'CGC033-D', category: 'CGC with panel', name: 'CGC033-D', image: 'https://hande.zzydhj.com/hande/CGC033-D.jpg' },
+            { id: 'CGC048-D', category: 'CGC with panel', name: 'CGC048-D', image: 'https://hande.zzydhj.com/hande/CGC048-D.jpg' },
+            { id: 'CGC049-D', category: 'CGC with panel', name: 'CGC049-D', image: 'https://hande.zzydhj.com/hande/CGC049-D.jpg' },
+            { id: 'CGC053-D', category: 'CGC with panel', name: 'CGC053-D', image: 'https://hande.zzydhj.com/hande/CGC053-D.jpg' },
+            { id: 'CGC054-D', category: 'CGC with panel', name: 'CGC054-D', image: 'https://hande.zzydhj.com/hande/CGC054-D.jpg' },
+            { id: 'TAG002-D', category: 'TAG with panel', name: 'TAG002-D', image: 'https://hande.zzydhj.com/hande/TAG002-D.jpg' },
+            { id: 'TAG005-D', category: 'TAG with panel', name: 'TAG005-D', image: 'https://hande.zzydhj.com/hande/TAG005-D.jpg' },
+            { id: 'TAG021-D', category: 'TAG with panel', name: 'TAG021-D', image: 'https://hande.zzydhj.com/hande/TAG021-D.jpg' },
+            { id: 'TAG026-D', category: 'TAG with panel', name: 'TAG026-D', image: 'https://hande.zzydhj.com/hande/TAG026-D.jpg' },
+            { id: 'TAG027-D', category: 'TAG with panel', name: 'TAG027-D', image: 'https://hande.zzydhj.com/hande/TAG027-D.jpg' },
+            { id: 'TAG029-D', category: 'TAG with panel', name: 'TAG029-D', image: 'https://hande.zzydhj.com/hande/TAG029-D.jpg' },
+            { id: 'TAG031-D', category: 'TAG with panel', name: 'TAG031-D', image: 'https://hande.zzydhj.com/hande/TAG031-D.jpg' },
+            { id: 'TAG033-D', category: 'TAG with panel', name: 'TAG033-D', image: 'https://hande.zzydhj.com/hande/TAG033-D.jpg' },
+            { id: 'TAG048-D', category: 'TAG with panel', name: 'TAG048-D', image: 'https://hande.zzydhj.com/hande/TAG048-D.jpg' },
+            { id: 'TAG049-D', category: 'TAG with panel', name: 'TAG049-D', image: 'https://hande.zzydhj.com/hande/TAG049-D.jpg' },
+            { id: 'TAG053-D', category: 'TAG with panel', name: 'TAG053-D', image: 'https://hande.zzydhj.com/hande/TAG053-D.jpg' },
+            { id: 'TAG054-D', category: 'TAG with panel', name: 'TAG054-D', image: 'https://hande.zzydhj.com/hande/TAG054-D.jpg' },
+            { id: 'TAG073-D', category: 'TAG Single Panel No Glitter', name: 'TAG073-D', image: 'https://hande.zzydhj.com/hande/HY073-D.jpg' },
+            { id: 'TAG074-D', category: 'TAG Single Panel No Glitter', name: 'TAG074-D', image: 'https://hande.zzydhj.com/hande/HY074-D.jpg' },
+            { id: 'TAG075-D', category: 'TAG Single Panel No Glitter', name: 'TAG075-D', image: 'https://hande.zzydhj.com/hande/HY075-D.jpg' },
+            { id: 'TAG076-D', category: 'TAG Single Panel No Glitter', name: 'TAG076-D', image: 'https://hande.zzydhj.com/hande/HY076-D.jpg' },
+            { id: 'TAG077-D', category: 'TAG Single Panel No Glitter', name: 'TAG077-D', image: 'https://hande.zzydhj.com/hande/HY077-D.jpg' },
+            /* GEN:PRODUCTS END */
+        ];
+
+        // ================= 停用产品配置（停售 / 缺货型号）=================
+        // 需要在前端停用的产品 ID 填在这个数组里，须与上方 products 中的 id 完全一致（区分大小写）。
+        // 示例：const DISABLED_PRODUCT_IDS = ['HY001-D', 'PSAD-029'];
+        // 效果：对应产品数量输入框禁用（不可点、不可填、灰底显示），图片保持彩色并可放大查看，
+        //       且不计入任何统计、本地暂存与订单导出；保持空数组 [] 即全部产品可选。
+        /* GEN:DISABLED BEGIN 此区块由生成工具托管，请勿手改 */
+        const DISABLED_PRODUCT_IDS = [];
+        /* GEN:DISABLED END */
+        const disabledIdSet = new Set(DISABLED_PRODUCT_IDS);
+
+        // 产品是否已停用：渲染时用于禁用该产品的数量输入框
+        function isDisabled(id) {
+            return disabledIdSet.has(id);
+        }
+
+        // 读取产品数量的统一入口：停用产品恒返回 0，
+        // 保证统计、本地暂存、下单校验与导出都自然排除停用型号
+        function getQty(id) {
+            if (isNoQty(id)) return 0;
+            return parseInt(document.getElementById(`input-${id}`).value) || 0;
+        }
+
+        // ================= 本站差异（SITE_PATCH）=================
+        // 上方产品行只写产品库默认值；本站设的起订量 / 预售状态集中在下面这一块。
+        // 改任何型号的本站状态只动这一块，几百行产品一个字都不动。
+        /* GEN:SITEPATCH BEGIN 此区块由生成工具托管，请勿手改 */
+        const SITE_PATCH = {
+        };
+        /* GEN:SITEPATCH END */
+        // 合并必须赶在 preSaleSet / moqOf 之前：它们都是靠 products 字段建集合的，
+        // 晚一步本站的预售与起订量就会静默失效（不报错，只是当没设过）。
+        for (const p of products) Object.assign(p, SITE_PATCH[p.id] || {});
+
+        // ================= 数量规则：正整数、起订量、预售 =================
+        // 起订量与预售的本站差异在上面的 SITE_PATCH 里，页面初始化时已合并进 products，
+        // 所以这里仍直接从 products 读，不另开一张配置表。预售型号的数量框显示 Pre Sale
+        // 且不可填，与置灰共用同一条「数量恒为 0」的通道：统计、本地暂存、导出天然排除它们，
+        // 历史缓存里的脏值也绕不过去。
+        const preSaleSet = new Set(products.filter(p => p.form === 'presale').map(p => p.id));
+        function isPreSale(id) { return preSaleSet.has(id); }
+        function isNoQty(id) { return disabledIdSet.has(id) || isPreSale(id); }
+        function moqOf(id) {
+            const p = products.find(x => x.id === id);
+            const moq = Math.floor(Number(p && p.moq));
+            return Number.isFinite(moq) && moq > 0 ? moq : 0;      // 0 表示不设起订量
+        }
+        // 只管格式：非数字、0、负数清空，小数当场截成整数（旧代码靠 parseInt 把 1.5 静默当 1，客户并不知情）。
+        // 只能在「输入已经完成」时调用（离开输入框、从暂存恢复）：number 框一旦被回写，
+        // 光标会跳到最前面，输入过程中动它会让用户接着敲的数字插到开头（敲 1 . 5 会变成 51）。
+        // 同理，这一步也绝对不能查起订量：逐位输入时「1」是「10」的开头，一查就把 10、25 这类数量永远打不出来。
+        function fmtInput(input) {
+            const num = Number(input.value);
+            if (input.value === '' || !Number.isFinite(num)) { input.value = ''; return; }
+            const n = Math.floor(num);
+            input.value = n > 0 ? String(n) : '';
+        }
+        // 起订量只在「输入已经完成」的两个时机检查：离开输入框（弹窗告知）、从暂存恢复历史数量（静默清掉）。
+        // 输入过程中不拦截，否则凑不出一条完整的数量就没法通过检查。
+        function enforceMin(id, input, noisy) {
+            const moq = moqOf(id);
+            if (!moq || input.value === '' || Number(input.value) >= moq) return;
+            input.value = '';
+            if (noisy) showNotice('Minimum order quantity', `This product requires at least ${moq}. Please enter ${moq} or more. (该型号起订量 ${moq}，请输入 ${moq} 或更多。)`, input);
+        }
+        function handleBlur(id, input) {
+            if (isNoQty(id)) return; // 停用与预售的框本来就填不进东西，不必再走清洗与统计
+            fmtInput(input);
+            enforceMin(id, input, true);
+            updateVisuals(id, input);
+            calculateTotals();
+            saveToStorage();
+        }
+        // 框里那句灰字就是这个型号的下单提示，三个状态共用这一个位置：
+        //   预售 -> 空（框上另有一层渐变 Pre Sale，不必重复）
+        //   有起订量 -> Min. N（客户不用一个个填了才知道门槛）
+        //   其余 -> 0
+        // 停用与预售都不能下单，所以不提示起订量，免得客户照着数字填。
+        function phOf(p) {
+            if (isPreSale(p.id)) return '';
+            const moq = isNoQty(p.id) ? 0 : moqOf(p.id);
+            return moq ? `Min. ${moq}` : '0';
+        }
+
+        // ================= 数量规则结束 =================
+
+        // ================= 分组配置（category0 映射）=================
+        // ⚠️ 后续新增分组只需在此处添加映射即可，产品数据无需手动修改
+        // 支持两级或三级：
+        //   两级：'一级分组': ['二级分类A', '二级分类B']
+        //   三级：'一级分组': [{ name: '二级子组', children: ['三级分类A', '三级分类B'] }, '二级分类C']
+        // 分类名必须与产品数据中的 category 字段完全一致
+        // TPU 站点：仅保留 Grading Slab Protection 这一个大分组
+        const categoryGroupMap = {
+            /* GEN:GROUPMAP BEGIN 此区块由生成工具托管，请勿手改 */
+            'Grading Slab Protection': ['PSA Back Single Panel', 'PSA Single Panel No Glitter', 'PSA with Double panels', 'PSA Magnetic Double Panels', 'BGS with panel', 'BGS Single Panel No Glitter', 'ACE with panel', 'CGC with panel', 'TAG with panel', 'TAG Single Panel No Glitter']
+            /* GEN:GROUPMAP END */
+        };
+        const categoryGroups = Object.keys(categoryGroupMap);
+
+        // 自动为每个产品赋值 category0（一级分组）
+        products.forEach(p => {
+            for (const [group, entries] of Object.entries(categoryGroupMap)) {
+                const leaves = entries.flatMap(e => typeof e === 'string' ? [e] : (e.children || []));
+                if (leaves.includes(p.category)) { p.category0 = group; break; }
+            }
+        });
+
+        /* GEN:STORAGE BEGIN 此区块由生成工具托管，请勿手改 */
+        const STORAGE_KEY = 'only_back_panel_order_form_data_v1';
+        /* GEN:STORAGE END */
+        const PLACEHOLDER_IMG = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+
+        const categories = [...new Set(products.map(p => p.category))];
+        let currentGroup = categoryGroups[0];
+        let currentCategory = null;
+
+        function getGroupForCategory(cat) {
+            for (const [group, entries] of Object.entries(categoryGroupMap)) {
+                const leaves = entries.flatMap(e => typeof e === 'string' ? [e] : (e.children || []));
+                if (leaves.includes(cat)) return group;
+            }
+            return null;
+        }
+
+        function getVisibleCategories() {
+            const out = [];
+            (categoryGroupMap[currentGroup] || []).forEach(entry => {
+                const leaves = typeof entry === 'string' ? [entry] : (entry.children || []);
+                leaves.forEach(c => { if (categories.includes(c)) out.push(c); });
+            });
+            return out;
+        }
+
+        // ================= 侧边栏 Mega Menu 渲染与交互 =================
+        function renderSidebar() {
+            const menu = document.getElementById('sidebar-menu');
+            menu.innerHTML = categoryGroups.map((groupName, gi) => {
+                const isActive = groupName === currentGroup;
+                let leafIndex = 0;
+                const leafRow = (cat, ci, isL3) => `
+                            <div class="mega-sub-item ${isL3 ? 'mega-sub-item--l3' : ''} ${cat === currentCategory ? 'active' : ''}" onclick="switchCategory(${ci})" id="sub-item-${gi}-${ci}">
+                                <span>${isL3 ? '<i class="l3-dot"></i>' : ''}${cat}</span>
+                                <span class="sub-count" id="sub-count-${gi}-${ci}">0</span>
+                            </div>`;
+                const subHtml = (categoryGroupMap[groupName] || []).map((entry, ei) => {
+                    // 二级叶子分类
+                    if (typeof entry === 'string') {
+                        if (!categories.includes(entry)) return '';
+                        return leafRow(entry, leafIndex++, false);
+                    }
+                    // 二级子组（内含三级叶子分类），预留三级分组能力
+                    const kids = (entry.children || []).filter(c => categories.includes(c));
+                    if (!kids.length) return '';
+                    const rows = kids.map(k => leafRow(k, leafIndex++, true)).join('');
+                    return `
+                        <div class="mega-sub-group-item" onclick="toggleSubGroup(${gi}, ${ei})" id="subgroup-item-${gi}-${ei}">
+                            <span class="mega-sub-group-name">${entry.name}</span>
+                            <span class="mega-sub-group-right">
+                                <span class="sub-count" id="subgroup-count-${gi}-${ei}">0</span>
+                                <span class="mega-arrow sub-arrow">›</span>
+                            </span>
+                        </div>
+                        <div class="mega-sub-list nested" id="subgroup-list-${gi}-${ei}">
+                            <div class="mega-sub-inner">${rows}</div>
+                        </div>`;
+                }).join('');
+                return `
+                    <div class="mega-group-item ${isActive ? 'active' : ''}" onclick="switchGroup(${gi})" id="group-item-${gi}">
+                        <span class="mega-group-name">${groupName}</span>
+                        <span class="mega-group-right">
+                            <span class="mega-count" id="group-count-${gi}">0</span>
+                            <span class="mega-arrow">›</span>
+                        </span>
+                    </div>
+                    <div class="mega-sub-list ${isActive ? 'open' : ''}" id="sub-list-${gi}">
+                        <div class="mega-sub-inner">
+                        ${subHtml}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function switchGroup(idx) {
+            const groupName = categoryGroups[idx];
+            // 点击一级分组 = 展开该组并显示全部产品；再次点击已激活的分组 = 回到全部
+            currentGroup = groupName;
+            currentCategory = null;
+            // 不重建 DOM，仅切换 class，保留手风琴开合过渡动画
+            categoryGroups.forEach((g, i) => {
+                const item = document.getElementById(`group-item-${i}`);
+                const list = document.getElementById(`sub-list-${i}`);
+                if (item) item.classList.toggle('active', i === idx);
+                if (list) list.classList.toggle('open', i === idx);
+            });
+            document.querySelectorAll('.mega-sub-item.active').forEach(el => el.classList.remove('active'));
+            calculateTotals();
+            document.querySelectorAll('.product-card').forEach(card => {
+                card.classList.toggle('hidden', card.dataset.group !== currentGroup);
+            });
+            loadImagesForGroup(currentGroup);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function switchCategory(idx) {
+            const visibleCats = getVisibleCategories();
+            currentCategory = visibleCats[idx];
+            // 不重建 DOM，仅切换当前组内子分类高亮，保留过渡动画
+            const gi = categoryGroups.indexOf(currentGroup);
+            document.querySelectorAll(`#sub-list-${gi} .mega-sub-item`).forEach((el, i) => {
+                el.classList.toggle('active', i === idx);
+            });
+            calculateTotals();
+            document.querySelectorAll('.product-card').forEach(card => {
+                if (card.dataset.group !== currentGroup) {
+                    card.classList.add('hidden');
+                } else if (currentCategory === null || card.dataset.category === currentCategory) {
+                    card.classList.remove('hidden');
+                } else {
+                    card.classList.add('hidden');
+                }
+            });
+            if (currentCategory) {
+                loadImagesForCategory(currentCategory);
+            } else {
+                loadImagesForGroup(currentGroup);
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function toggleSubGroup(gi, ei) {
+            const list = document.getElementById(`subgroup-list-${gi}-${ei}`);
+            const item = document.getElementById(`subgroup-item-${gi}-${ei}`);
+            if (list) list.classList.toggle('open');
+            if (item) item.classList.toggle('open');
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+            document.getElementById('sidebar-overlay').classList.toggle('open');
+        }
+
+        function closeSidebar() {
+            if (window.innerWidth < 1024) {
+                document.getElementById('sidebar').classList.remove('open');
+                document.getElementById('sidebar-overlay').classList.remove('open');
+            }
+        }
+
+        function loadImage(img) {
+            if (!img.dataset.src) return;
+            img.onload = function () {
+                this.classList.remove('opacity-0');
+                this.classList.add('opacity-100');
+                const spinner = this.parentElement.querySelector('.loading-spinner');
+                if (spinner) spinner.style.display = 'none';
+            };
+            img.src = img.dataset.src;
+            if (img.complete) img.onload();
+            img.classList.remove('lazy-img');
+            img.removeAttribute('data-src');
+        }
+
+        function loadImagesForCategory(cat) {
+            document.querySelectorAll(`.product-card[data-category="${cat}"] .lazy-img`).forEach(img => {
+                loadImage(img);
+            });
+        }
+
+        function loadImagesForGroup(groupName) {
+            document.querySelectorAll(`.product-card[data-group="${groupName}"] .lazy-img`).forEach(img => {
+                loadImage(img);
+            });
+        }
+
+        /* P2 兜底预加载：原先 5 秒一到就把剩余图片全量提升为 src，现在改为浏览器空闲时分片
+           提升，每批 8 张；终态仍是“全部加载完”，可见效果与现在一致，只是不再集中在一个时间点。 */
+        function idlePreload() {
+            const run = (batch) => {
+                const pending = document.querySelectorAll('.lazy-img');
+                if (!pending.length) return;
+                for (let i = 0; i < Math.min(batch, pending.length); i++) loadImage(pending[i]);
+                schedule();
+            };
+            const schedule = () => {
+                if (typeof window.requestIdleCallback === 'function') {
+                    // timeout 4000：就算页面一直忙，最迟 4 秒也会跑一批，不会比现在慢
+                    requestIdleCallback((d) => run(d.timeRemaining() > 0 ? Math.min(8, Math.max(1, Math.floor(d.timeRemaining() / 6))) : 2), { timeout: 4000 });
+                } else {
+                    setTimeout(() => run(8), 600);
+                }
+            };
+            schedule();
+        }
+        idlePreload();
+
+        // ================= 图片放大弹窗逻辑 =================
+        const lightbox = document.getElementById('lightbox');
+        const lightboxImg = document.getElementById('lightbox-img');
+
+        function openLightbox(imageSrc) {
+            lightboxImg.src = imageSrc;
+            lightbox.classList.remove('hidden');
+            void lightbox.offsetWidth;
+            lightbox.classList.remove('opacity-0');
+            lightboxImg.classList.remove('scale-95');
+            lightboxImg.classList.add('scale-100');
+        }
+
+        function closeLightbox() {
+            lightbox.classList.add('opacity-0');
+            lightboxImg.classList.remove('scale-100');
+            lightboxImg.classList.add('scale-95');
+            setTimeout(() => {
+                lightbox.classList.add('hidden');
+                lightboxImg.src = '';
+            }, 300);
+        }
+
+        // ================= 核心渲染与业务逻辑 =================
+        const grid = document.getElementById('product-grid');
+        const totalItemsEl = document.getElementById('total-items');
+        const totalQtyEl = document.getElementById('total-qty');
+
+        function renderProducts() {
+            grid.innerHTML = products.map(product => `
+                <div class="product-card bg-white border border-gray-200 rounded-lg overflow-hidden flex flex-col ${(product.category === currentCategory || currentCategory === null) && getGroupForCategory(product.category) === currentGroup ? '' : 'hidden'} ${isNoQty(product.id) ? 'disabled' : ''}" 
+                     id="card-${product.id}" 
+                     data-category="${product.category}"
+                     data-group="${getGroupForCategory(product.category)}">
+                     
+                    <div class="aspect-square w-full bg-gray-100 relative cursor-pointer group overflow-hidden" onclick="openLightbox('${product.image}')">
+                        <div class="absolute inset-0 flex items-center justify-center text-gray-400 text-[10px] sm:text-xs font-bold tracking-widest animate-pulse-text loading-spinner">
+                            LOADING...
+                        </div>
+                        <img src="${PLACEHOLDER_IMG}" 
+                             data-src="${product.image}" 
+                             alt="${product.name}" 
+                             class="lazy-img absolute inset-0 w-full h-full object-cover transition-all duration-500 group-hover:scale-110 opacity-0 z-10">
+                        <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center z-20">
+                            <svg class="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path></svg>
+                        </div>
+                        <span class="absolute top-1 left-1 bg-black/60 text-white text-[10px] px-1 rounded z-30 pointer-events-none">${product.id}</span>
+                    </div>
+
+                    <div class="p-2 flex flex-col flex-1">
+                        <!-- 长标题两行显示：外层固定两行高度(40px)，并用负外边距上下各借 10px，
+                             使两行标题以原单行位置为中心对称展开（第一行略上、第二行略下），
+                             卡片总高、图片与输入框位置均保持不变；单行标题垂直居中留在原位。
+                             行高收紧为 leading-4(16px)：两行更紧凑，且居中后第二行抬离输入框 -->
+                        <div class="h-10 flex items-center justify-center overflow-hidden -mt-2.5 -mb-0.5">
+                            <h3 class="text-sm leading-4 text-gray-700 font-bold line-clamp-2 break-all text-center m-0 p-0 w-full">${product.name}</h3>
+                        </div>
+                        <div class="qty-wrap">
+                        <input 
+                            type="number" 
+                            min="0" 
+                            step="1" 
+                            placeholder="${phOf(product)}" 
+                            class="w-full border border-gray-300 rounded px-2 py-1 text-center font-bold text-gray-800 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white"
+                            style="border: 1px solid #d1d5db !important;"
+                            oninput="handleInput('${product.id}', this)"
+                            onblur="handleBlur('${product.id}', this)"
+                            id="input-${product.id}"
+                            ${isNoQty(product.id) ? 'disabled' : ''}
+                        >
+                        ${isPreSale(product.id) ? '<span class="presale-flag">Pre Sale</span>' : ''}
+                        </div><!-- qty-wrap -->
+                    </div>
+                </div>
+            `).join('');
+
+            loadFromStorage();
+            if (currentCategory) {
+                loadImagesForCategory(currentCategory);
+            } else {
+                loadImagesForGroup(currentGroup);
+            }
+        }
+
+        function updateVisuals(id, input) {
+            if (isNoQty(id)) return; // 停用与预售不参与选中态：脚本塞值也不该亮起蓝框
+            const card = document.getElementById(`card-${id}`);
+            const val = parseInt(input.value) || 0;
+
+            if (val > 0) {
+                card.classList.add('active');
+                card.classList.remove('border-gray-200');
+            } else {
+                card.classList.remove('active');
+                card.classList.add('border-gray-200');
+            }
+        }
+
+        function handleInput(id, input) {
+            if (isNoQty(id)) return; // 同上，且不把填不进去的数量写进暂存与统计
+            updateVisuals(id, input);
+            calculateTotals();
+            saveToStorage();
+        }
+
+        function calculateTotals() {
+            let items = 0;
+            let qty = 0;
+            const catBreakdown = {};
+            const groupBreakdown = {};
+
+            categories.forEach(c => catBreakdown[c] = 0);
+            categoryGroups.forEach(g => groupBreakdown[g] = 0);
+
+            products.forEach(p => {
+                const val = getQty(p.id);
+                if (val > 0) {
+                    items++;
+                    qty += val;
+                    catBreakdown[p.category] = (catBreakdown[p.category] || 0) + val;
+                    const gn = p.category0;
+                    if (gn) groupBreakdown[gn] = (groupBreakdown[gn] || 0) + val;
+                }
+            });
+
+            totalItemsEl.innerText = items;
+            totalQtyEl.innerText = qty;
+            const mItemsEl = document.getElementById('m-total-items');
+            const mQtyEl = document.getElementById('m-total-qty');
+            if (mItemsEl) mItemsEl.innerText = items;
+            if (mQtyEl) mQtyEl.innerText = qty;
+
+            // 更新一级分组角标
+            categoryGroups.forEach((g, i) => {
+                const badge = document.getElementById(`group-count-${i}`);
+                if (badge) {
+                    const count = groupBreakdown[g] || 0;
+                    badge.innerText = count;
+                    badge.classList.toggle('has-items', count > 0);
+                }
+            });
+
+            // 更新当前分组的二级分类角标
+            const gi = categoryGroups.indexOf(currentGroup);
+            if (gi >= 0) {
+                const subCats = getVisibleCategories();
+                subCats.forEach((cat, ci) => {
+                    const badge = document.getElementById(`sub-count-${gi}-${ci}`);
+                    if (badge) {
+                        const count = catBreakdown[cat] || 0;
+                        badge.innerText = count;
+                        badge.classList.toggle('has-items', count > 0);
+                    }
+                });
+                // 更新二级子组（三级父级）角标 = 其下三级叶子之和
+                (categoryGroupMap[currentGroup] || []).forEach((entry, ei) => {
+                    if (typeof entry === 'object') {
+                        const sum = (entry.children || []).reduce((s, c) => s + (catBreakdown[c] || 0), 0);
+                        const sb = document.getElementById(`subgroup-count-${gi}-${ei}`);
+                        if (sb) {
+                            sb.innerText = sum;
+                            sb.classList.toggle('has-items', sum > 0);
+                        }
+                    }
+                });
+            }
+        }
+
+        function saveToStorage() {
+            const data = {};
+            products.forEach(p => {
+                const val = getQty(p.id);
+                if (val > 0) {
+                    data[p.id] = val;
+                }
+            });
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        }
+
+        function loadFromStorage() {
+            const savedData = localStorage.getItem(STORAGE_KEY);
+            if (savedData) {
+                const data = JSON.parse(savedData);
+                Object.keys(data).forEach(id => {
+                    if (isNoQty(id)) return; // 停用与预售型号不恢复历史数量
+                    const input = document.getElementById(`input-${id}`);
+                    if (input) {
+                        input.value = data[id];
+                        fmtInput(input);            // 缓存里的小数、负数当场抹平
+                        enforceMin(id, input, false); // 缓存里不足起订量的数量静默清掉（不弹窗打扰）
+                        updateVisuals(id, input);
+                    }
+                });
+                saveToStorage(); // 清洗过的数量回写，免得每次加载都重复处理一遍
+            }
+            calculateTotals();
+        }
+
+        function getBeijingTimeStr() {
+            const d = new Date();
+            const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+            const bjTime = new Date(utc + (3600000 * 8));
+
+            const yyyy = bjTime.getFullYear();
+            const mm = String(bjTime.getMonth() + 1).padStart(2, '0');
+            const dd = String(bjTime.getDate()).padStart(2, '0');
+            const hh = String(bjTime.getHours()).padStart(2, '0');
+            const min = String(bjTime.getMinutes()).padStart(2, '0');
+            const ss = String(bjTime.getSeconds()).padStart(2, '0');
+
+            return `${yyyy}${mm}${dd}_${hh}${min}${ss}`;
+        }
+
+        function showDownloadModal() {
+            const hasData = products.some(p => getQty(p.id) > 0);
+            if (!hasData) {
+                showNotice('Nothing selected', 'Please enter a quantity for at least one product. (请至少为一个产品填写数量)');
+                return;
+            }
+            const modal = document.getElementById('download-modal');
+            const content = document.getElementById('download-modal-content');
+            const input = document.getElementById('customer-name');
+
+            modal.classList.remove('hidden');
+            void modal.offsetWidth;
+            modal.classList.remove('opacity-0');
+            content.classList.remove('scale-95');
+            content.classList.add('scale-100');
+
+            setTimeout(() => input.focus(), 300);
+        }
+
+        function closeDownloadModal() {
+            const modal = document.getElementById('download-modal');
+            const content = document.getElementById('download-modal-content');
+            modal.classList.add('opacity-0');
+            content.classList.remove('scale-100');
+            content.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+
+        // ================= 提示弹窗：替代浏览器原生 alert =================
+        // 三个提示（起订量、没选型号、没填名字）共用这一个组件，别再各写一份。
+        // back 传进来的是触发提示的那个输入框，关掉后把光标还回去，客户好接着改。
+        let noticeBack = null;
+        function showNotice(title, text, back) {
+            const modal = document.getElementById('notice-modal');
+            const content = document.getElementById('notice-modal-content');
+            document.getElementById('notice-title').textContent = title;
+            document.getElementById('notice-text').textContent = text;
+            noticeBack = back || null;
+            modal.classList.remove('hidden');
+            void modal.offsetWidth;
+            modal.classList.remove('opacity-0');
+            content.classList.remove('scale-95');
+            content.classList.add('scale-100');
+            setTimeout(() => { const btn = modal.querySelector('button'); if (btn) btn.focus(); }, 300);
+        }
+        function closeNotice() {
+            const modal = document.getElementById('notice-modal');
+            const content = document.getElementById('notice-modal-content');
+            if (modal.classList.contains('hidden')) return;
+            modal.classList.add('opacity-0');
+            content.classList.remove('scale-100');
+            content.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+            const back = noticeBack;
+            noticeBack = null;
+            if (back && document.activeElement !== back) { try { back.focus(); } catch (e) { } }
+        }
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeNotice(); });
+        // ================= 提示弹窗结束 =================
+
+        // ================= 恢复：纯文本 CSV 导出逻辑 =================
+        function confirmDownload() {
+            let nameInput = document.getElementById('customer-name').value.trim();
+            if (!nameInput) {
+                showNotice('Name required', 'Please enter your name before exporting. (导出前请先填写名字)');
+                return;
+            }
+
+            let cleanName = nameInput.replace(/[^a-zA-Z0-9]/g, '').substring(0, 7);
+            if (!cleanName) cleanName = "Customer";
+
+            closeDownloadModal();
+            exportToExcel(cleanName);
+        }
+
+        function exportToExcel(customerName) {
+            const selectedProducts = products.filter(p => getQty(p.id) > 0);
+
+            const grouped = {};
+            selectedProducts.forEach(p => {
+                if (!grouped[p.category]) grouped[p.category] = [];
+                grouped[p.category].push({ ...p, val: getQty(p.id) });
+            });
+
+            const activeCategories = Object.keys(grouped);
+            let maxRows = 0;
+            activeCategories.forEach(cat => {
+                if (grouped[cat].length > maxRows) maxRows = grouped[cat].length;
+            });
+
+            let csvContent = "\uFEFF";
+            let headerRow = [];
+            activeCategories.forEach(cat => {
+                headerRow.push("型号ID", "产品名称", "所属系列", "订购数量", "");
+            });
+            csvContent += headerRow.join(",") + "\n";
+
+            for (let i = 0; i < maxRows; i++) {
+                let row = [];
+                activeCategories.forEach(cat => {
+                    const item = grouped[cat][i];
+                    if (item) {
+                        row.push(item.id, item.name.replace(/,/g, " "), item.category, item.val, "");
+                    } else {
+                        row.push("", "", "", "", "");
+                    }
+                });
+                csvContent += row.join(",") + "\n";
+            }
+
+            // ===== 新增：汇总求和行 =====
+            let sumRow = [];
+            activeCategories.forEach(cat => {
+                const total = grouped[cat].reduce((acc, item) => acc + item.val, 0);
+                sumRow.push("合计", "", "", total, "");
+            });
+            csvContent += sumRow.join(",") + "\n";
+            // ===== 汇总行结束 =====
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+
+            const timeStr = getBeijingTimeStr();
+            const fileName = `${customerName}_${timeStr}.csv`;
+
+            link.setAttribute("href", url);
+            link.setAttribute("download", fileName);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function resetAll() {
+            if (confirm('Are you sure to clear all selected quantities? This action cannot be undone. (确定要清空所有已选数量吗？此操作无法撤销。)')) {
+                products.forEach(p => {
+                    const input = document.getElementById(`input-${p.id}`);
+                    if (input) {
+                        input.value = '';
+                        updateVisuals(p.id, input);
+                    }
+                });
+                localStorage.removeItem(STORAGE_KEY);
+                calculateTotals();
+            }
+        }
+
+        window.onbeforeunload = function (e) {
+            if (parseInt(totalQtyEl.innerText) > 0) {
+                e = e || window.event;
+                if (e) { e.returnValue = 'You have unsaved orders, are you sure you want to leave?'; }
+                return 'You have unsaved orders, are you sure you want to leave?';
+            }
+        };
+
+        renderSidebar();
+        renderProducts();
+        initPromo();
+    </script>
+</body>
+
+</html>
