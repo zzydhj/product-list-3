@@ -58,8 +58,31 @@ function toast(msg, kind = '') {
   toast._t = setTimeout(() => { t.hidden = true; }, 3200);
 }
 
-function printLog(text) {
-  $('#log').textContent = text || '（无输出）';
+/**
+ * 日志按次追加：每条一个标题行（时间 + 做了什么 + 成败）加一段正文，新的排最上面。
+ * 为什么不再整块替换纯文本：那个后台的成败直接决定人要不要继续改，
+ * 而旧版一次成功之后屏幕上可能还挂着上一次失败的那段 400，看着就像「还是被拒」。
+ */
+const LOG_MAX = 30;
+const LOG_KIND_TEXT = { ok: '成功', bad: '失败', info: '记录' };
+const logEntries = [];
+const hhmmss = (d) => [d.getHours(), d.getMinutes(), d.getSeconds()].map((n) => String(n).padStart(2, '0')).join(':');
+
+function printLog(label, kind, text) {
+  logEntries.unshift({
+    t: new Date(), label,
+    kind: LOG_KIND_TEXT[kind] ? kind : 'info',
+    text: (text === undefined || text === null || text === '') ? '（无输出）' : String(text),
+  });
+  if (logEntries.length > LOG_MAX) logEntries.length = LOG_MAX;
+  const box = $('#log');
+  box.innerHTML = '';
+  for (const e of logEntries) {
+    box.append(
+      el('div', 'log-head ' + e.kind, `${hhmmss(e.t)}  ${e.label} · ${LOG_KIND_TEXT[e.kind]}`),
+      el('div', 'log-body', e.text)
+    );
+  }
   $('#backupList').textContent = '';
 }
 
@@ -252,6 +275,9 @@ function materialiseMembers(s) {
 function addMembers(ids) {
   const s = site();
   if (!ids.length) return;
+  if (!ownsMembers(s)) {
+    return toast(`${s.key} 没有自己的成员名单，不能往这里加型号（画册的成员跟随它的选款站）`, 'bad');
+  }
   snapshot();
   materialiseMembers(s);
   const added = ids.filter((id) => !s.members.includes(id));
@@ -260,9 +286,22 @@ function addMembers(ids) {
   toast(added.length ? `已把 ${added.length} 个型号加入 ${s.key}` : '这些型号已在本站', added.length ? '' : 'bad');
 }
 
+/**
+ * 当前站点是否拥有自己的成员名单：只有选款站有。画册站的成员从 owner 派生，
+ * LIBRARY_SITE 是合成对象同样没有。面板按钮、右键菜单与下面两个写入函数共用这一个判据 ——
+ * 入口各算一套口径的话，就会留下「菜单给了、按钮没给」那种静默写错数据的口子。
+ */
+const ownsMembers = (s) => s.type === 'form';
+const canRemoveMember = (p) => ownsMembers(site()) && membersAsOf(site()).includes(p.id);
+
 /** 移出本站：只删本站名单里的这一条，产品库里还在，别的站也在 */
 function removeMember(p) {
   const s = site();
+  // 画册站身上写 members：生成器不读（它只从 owner 取成员），validate 对画册站又直接 continue，
+  // 结果是「弹了成功、页面一个字没变、sites.json 多出一份 400 条的没人用的数组」。
+  if (!ownsMembers(s)) {
+    return toast(`${s.key} 没有自己的成员名单：请到它对应的选款站点里移出成员`, 'bad');
+  }
   snapshot();
   materialiseMembers(s);
   s.members = s.members.filter((x) => x !== p.id);
@@ -422,6 +461,41 @@ function renderAll() {
 }
 
 /**
+ * 产品库字段在站点视图里锁为只读。id / name / category / image / notes 存在 products.json，
+ * 全局只有一份：在站点视图里编辑它们改的也是这一份，所有卖这个型号的站一起变（不是「只改本站」）。
+ * 以前这里能编辑，歧义直接导致事故：改完 id 在各站 members / order 里留下幽灵条目被校验拦住；
+ * 而万一放过去，改名后的型号又会因为不在本站名单里而静默从页面上消失。
+ */
+const LIB_ONLY_FIELDS = ['#f-id', '#f-name', '#f-cat', '#f-image', '#f-notes'];
+function lockLibraryFields(lib) {
+  for (const sel of LIB_ONLY_FIELDS) {
+    const e = $(sel);
+    if (e) e.disabled = !lib;
+  }
+  const fill = $('#btnFillImage');      // 它按 ID 反推图片地址，同样是在写产品库字段
+  if (fill) fill.disabled = !lib;
+  // 新增 / 复制 / 真删都是往全局那一份 products.json 写记录：在某个站点里点，别的站会一起多出一条，
+  // 而 addProduct 还拿当前站点的分组去定新型号的默认分类 —— 同一个动作在两个视图里结果并不一样。
+  // 与字段锁同一口径：入口也只在产品库开（「从产品库删除」原本就已按 isLibrary 隐藏）。
+  const add = $('#btnAdd');
+  if (add) {
+    add.disabled = !lib;
+    add.title = lib
+      ? '在产品库新增一条型号记录（默认正常状态，且还不属于任何站点）'
+      : '新增产品只能在「产品库」视图做：它写的是全局那一份记录，不是本站';
+  }
+  const note = $('#liblock-note');
+  if (!note) return;
+  note.hidden = lib;
+  if (!lib) {
+    note.textContent = '型号 ID、显示名称、分类、图片、注释都是产品库字段：全局只有一份，' +
+      '在任何站点视图里改它们，所有卖这个型号的站点会一起变。所以这里只读 —— ' +
+      '要改请用左上「正在编辑」切到「产品库」，新增 / 复制 / 删除型号也只能在那里做。'
+      + '本站能改的只有：本站状态、本站起订量、本站画册归属、成员与顺序。';
+  }
+}
+
+/**
  * 面板标题与区块可见性只取决于「当前上下文」，与选中哪一条无关，所以单独一个函数
  * 放在 renderAll 里算：以前只在 renderEditor 里改，未选中产品时（面板整块隐藏）DOM
  * 里留的是 HTML 初值，面板一变可见就会闪出旧文案。
@@ -430,6 +504,7 @@ function renderContextLabels() {
   const lib = isLibrary();
   const s = site();
   const albumView = s.type === 'catalog';
+  lockLibraryFields(lib);
   // 同一块面板在产品库里是「默认值」、在站点里是「本站覆盖」，标题要说清楚这是哪回事
   $('#state-title').textContent = lib ? '选款表里的默认状态' : '本站状态（只影响本站）';
   $('#moq-label-text').textContent = lib ? '起订量（留空 = 不限）' : '本站起订量（留空 = 跟随产品库）';
@@ -728,7 +803,7 @@ function renderEditor() {
   // 真删只能在产品库；站点视图只给「移出本站」（且仅选款站自己持有成员名单）
   // 这两个跟选中项有关，留在本函数里；上下文相关的标题与分区可见性在 renderContextLabels
   $('#btnDelete').hidden = !isLibrary();
-  $('#btnRemoveMember').hidden = site().type !== 'form' || !membersAsOf(site()).includes(p.id);
+  $('#btnRemoveMember').hidden = !canRemoveMember(p);
   const pv = $('#previewImg');
   pv.src = p.image;
   pv.onerror = () => { pv.alt = '这张图打不开'; };
@@ -1093,8 +1168,12 @@ function openCtx(x, y, p) {
   const sep = () => menu.appendChild(el('hr'));
 
   item('编辑这个产品', () => { S.selId = p.id; renderGrid(); renderEditor(); $('.tab[data-tab=product]').click(); });
-  item('复制为一个新条目', () => duplicate(p));
-  item('改图片链接', () => { S.selId = p.id; renderGrid(); renderEditor(); $('#f-image').focus(); });
+  // 复制是往全局的 products.json 添一条，改图片链接写的是 image 字段：两个都属于产品库动作，
+  // 站点视图里留着会和字段锁互相打脸（那条菜单还会去聚焦一个已经禁用的输入框）。
+  if (isLibrary()) {
+    item('复制为一个新条目', () => duplicate(p));
+    item('改图片链接', () => { S.selId = p.id; renderGrid(); renderEditor(); $('#f-image').focus(); });
+  }
   sep();
   item('上移一位', () => step(p, -1));
   item('下移一位', () => step(p, +1));
@@ -1108,7 +1187,8 @@ function openCtx(x, y, p) {
   item(cur === 'disabled' ? '取消置灰（变正常可选）' : '置灰（图片可放大、数量不可填）', () => setState(cur === 'disabled' ? 'normal' : 'disabled'));
   item(cur === 'presale' ? '取消预售（恢复正常可选）' : '设为预售（数量框显示 Pre Sale）', () => setState(cur === 'presale' ? 'normal' : 'presale'));
   item(cur === 'hidden' ? '恢复上架' : '下架（选款表里不出现）', () => setState(cur === 'hidden' ? 'normal' : 'hidden'));
-  if (!isLibrary()) {
+  // 与面板那个按钮同一个判据：以前菜单在画册视图里也给「移出本站」，那是一个静默写错数据的入口
+  if (canRemoveMember(p)) {
     sep();
     item(`移出本站（${site().key}）`, () => removeMember(p));
   }
@@ -1237,7 +1317,7 @@ async function save() {
     const prev = snapshotIds();   // 记住改动前的名单：万一要采纳基线，靠它说清「这次做了什么」
     // 发出去之前统一整成固定键序：磁盘上的 products.json 才不会因为条目来源不同而整体重排
     const r = await api('/api/state', { products: S.products.map(canon), sites: S.sites });
-    printLog(threeStage(r));
+    printLog('保存并生成（写盘 → 生成页面 → 回归校验 → dist）', r.ok ? 'ok' : 'bad', threeStage(r));
     S.saved = serialize();          // 数据已落盘，内存与磁盘一致，dirty 该消
     syncBars();
     let bad = resultNote(r);
@@ -1245,7 +1325,7 @@ async function save() {
     if (bad && r.anchorPrompt && r.anchorPrompt.length) bad = await adoptAnchors(r, prev);
     toast(bad || '已保存，dist 交付包也一起更新了', bad ? 'bad' : 'good');
   } catch (e) {
-    printLog(e.message + '\n' + JSON.stringify(e.data?.errors || e.data, null, 2));
+    printLog('保存被拦下：数据校验未通过，未写盘', 'bad', e.message + '\n' + JSON.stringify(e.data?.errors || e.data, null, 2));
     toast('保存被拒绝：数据有问题，见日志', 'bad');
   }
 }
@@ -1295,7 +1375,7 @@ async function adoptAnchors(r, prev) {
   );
   if (!sure) return '未采纳基线：数据与页面已保存，但 dist 没更新。反悔可用顶部「撤销」或「备份列表」回滚。';
   const a = await api('/api/anchors', { reason });
-  printLog('—— 采纳人工基线 ——\n' + (a.out || '') + (a.build ? '\n—— 重新跑一遍 ——\n' + threeStage(a) : ''));
+  printLog('采纳人工基线并重跑', a.adopted ? 'ok' : 'bad', (a.out || '') + (a.build ? '\n—— 重新跑一遍 ——\n' + threeStage(a) : ''));
   if (!a.adopted) return '基线采纳被拒：还有非基线类的失败，见日志';
   return resultNote(a);
 }
@@ -1321,7 +1401,8 @@ function resultNote(r) {
 async function validateOnly() {
   try {
     const r = await api('/api/validate', { products: S.products, sites: S.sites });
-    printLog(r.errors.length ? r.errors.map((x) => '- ' + x.msg).join('\n') : '校验通过，没有发现问题');
+    printLog('校验（只看数据，不写盘）', r.errors.length ? 'bad' : 'ok',
+      r.errors.length ? r.errors.map((x) => '- ' + x.msg).join('\n') : '校验通过，没有发现问题');
     toast(r.errors.length ? `${r.errors.length} 个问题` : '校验通过', r.errors.length ? 'bad' : 'good');
   } catch (e) { toast(e.message, 'bad'); }
 }
@@ -1333,7 +1414,8 @@ async function checkImages() {
     const r = await api('/api/images', { urls });
     S.bad = new Set(r.bad.map((b) => b.url));
     renderGrid();
-    printLog(`共检测 ${r.total} 个唯一 URL，失败 ${r.bad.length} 个\n\n` + (r.bad.map((b) => `${b.status || b.error}  ${b.url}`).join('\n') || '全部可达'));
+    printLog('图片可达性检测', r.bad.length ? 'bad' : 'ok',
+      `共检测 ${r.total} 个唯一 URL，失败 ${r.bad.length} 个\n\n` + (r.bad.map((b) => `${b.status || b.error}  ${b.url}`).join('\n') || '全部可达'));
     toast(r.bad.length ? `${r.bad.length} 张图有问题` : '图片全部可达', r.bad.length ? 'bad' : 'good');
   } catch (e) { toast(e.message, 'bad'); }
 }
@@ -1342,10 +1424,10 @@ async function runCheck() {
   // /api/check 只注册了 POST，不能不传 body（上轮就是这里 404 且异常没人接，按钮按下去一点反应都没有）
   try {
     const r = await api('/api/check', {});
-    printLog(r.out);
+    printLog('回归校验', r.code === 0 ? 'ok' : 'bad', r.out);
     toast(r.code === 0 ? '回归校验通过' : '回归校验失败，见日志', r.code === 0 ? 'good' : 'bad');
   } catch (e) {
-    printLog('回归校验请求失败：' + e.message);
+    printLog('回归校验请求失败', 'bad', e.message);
     toast('回归校验请求失败：' + e.message, 'bad');
   }
 }
@@ -1367,7 +1449,7 @@ async function listBackups() {
         const note = r.preRestore
           ? '\n（回滚前那一刻已另存为：' + r.preRestore.join(' 与 ') + '；这类快照不进上面列表，最多留 5 组）'
           : '';
-        printLog(threeStage(r) + note);
+        printLog('回滚到备份并重新生成', r.ok ? 'ok' : 'bad', threeStage(r) + note);
         const scope = r.sitesRestored ? '（产品与站点配置一起）' : '（仅产品数据，那份备份没有站点配置）';
         const bad = resultNote(r);
         toast(bad ? '已回滚' + scope + '，' + bad : '已回滚并重新生成' + scope + '，回归校验通过', bad ? 'bad' : 'good');

@@ -16,6 +16,10 @@ tools/last-build.json
 !/favicon.png
 !/apple-touch-icon.png
 
+# tools/download-cgc.mjs 的输出目录：从图床拉回来的原始副本，只用于人工上传，
+# 既不是站点资源也进不了 dist；不忽略的话跑一次脚本就会往仓库根堆十几张 JPG
+/CGC-images/
+
 # 依赖与系统文件
 node_modules/
 .idea/

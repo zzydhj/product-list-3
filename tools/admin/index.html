@@ -101,6 +101,10 @@
             <div class="panel" id="tab-product">
                 <div id="noSel" class="placeholder">点左侧任意产品开始编辑</div>
                 <div id="editor" hidden>
+                    <!-- 产品库字段在站点视图里锁为只读（见 admin.js 的 lockLibraryFields）：
+                         这些字段全局只有一份，在站点里改一样会影响所有卖它的站，
+                         摆在站点视图里编辑太容易让人以为「只改本站」 -->
+                    <div class="hint locknote" id="liblock-note" hidden></div>
                     <label>型号 ID<input id="f-id" spellcheck="false"></label>
                     <div class="err" id="e-id"></div>
                     <label>显示名称<input id="f-name" spellcheck="false"></label>
@@ -169,7 +173,10 @@
                     <span class="hint">每次保存都会留一份，最多 20 份</span>
                 </div>
                 <div id="backupList"></div>
-                <pre id="log" class="log">（还没有操作）</pre>
+                <!-- 日志按次追加，每条带时间与成败标记（结构在 admin.js 的 printLog 里拼） -->
+                <div id="log" class="log">
+                    <div class="log-body">（还没有操作）</div>
+                </div>
             </div>
         </aside>
     </main>

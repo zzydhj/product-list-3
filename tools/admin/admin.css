@@ -624,6 +624,58 @@ button.danger:hover {
     overflow: auto;
 }
 
+/* 日志按次追加：每条一个标题行 + 一段正文，新的在最上面。
+   以前是整块替换纯文本，一次成功后屏幕上可能还留着上一次那条 400，看着像仍然失败 */
+.log-head {
+    font-weight: 600;
+    margin-top: 10px;
+    white-space: normal;
+}
+
+.log-head:first-child {
+    margin-top: 0;
+}
+
+.log-head.ok {
+    color: #4ade80;
+}
+
+.log-head.bad {
+    color: #fca5a5;
+}
+
+.log-head.info {
+    color: #93c5fd;
+}
+
+.log-body {
+    margin-top: 2px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #1e293b;
+}
+
+.log-body:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+}
+
+/* 站点视图里锁起来的产品库字段：灰到一眼看得出不能动，但内容要读得清 */
+input:disabled,
+select:disabled,
+textarea:disabled {
+    background: #f1f5f9;
+    color: var(--muted);
+    border-color: var(--line);
+    cursor: not-allowed;
+}
+
+.locknote {
+    border-left: 3px solid var(--amber);
+    padding-left: 8px;
+    color: var(--text);
+    line-height: 1.45;
+}
+
 /* 右键菜单与提示 */
 .ctx {
     position: fixed;
