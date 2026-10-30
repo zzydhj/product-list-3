@@ -1,2 +1,5 @@
 # 根域名首页直接展示选款表（URL 保持不变）
-/ /card-holder/index.html 200
+# 目标必须写目录形式 /card-holder/，不能写 /card-holder/index.html：
+# Pages 会把 .../index.html 自动规范化到 .../，而 200 重写是在平台内部再找一次资源，
+# 内部落点又被规范化拦回去，结果就是这条看着配了、访问 / 却仍是 404。
+/ /card-holder/ 200

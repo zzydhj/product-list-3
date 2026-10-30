@@ -164,6 +164,30 @@ function orderedMembers(s) {
   return [...listed, ...rest];
 }
 
+/**
+ * 把各站对某个型号的引用从旧 id 搬到新 id：members / order / catalogOff 里存的是 id 字符串而不是对象，
+ * 改完产品 id 不动这几份名单的话，旧 id 就地变成幽灵条目（保存被校验拦住），
+ * 而改名后的型号会因为「不在本站名单里」直接从页面上消失 —— 后者比报错难得查得多。
+ * 只改写已经存在的名单：没物化过 order 的站点不能被这里无中生有写出一个 419 条的数组（那是个大 diff）。
+ */
+function moveSiteRefs(oldId, newId) {
+  if (!oldId || !newId || oldId === newId) return;
+  for (const s of S.sites) {
+    for (const key of ['members', 'order', 'catalogOff']) {
+      if (!Array.isArray(s[key])) continue;
+      const i = s[key].indexOf(oldId);
+      if (i === -1) continue;
+      // 新 id 已在名单里（往一个已存在的型号名字上改）：丢旧留新，别写出重复条目
+      if (s[key].includes(newId)) s[key].splice(i, 1);
+      else s[key][i] = newId;
+    }
+    if (s.overrides && s.overrides[oldId]) {
+      if (!s.overrides[newId]) s.overrides[newId] = s.overrides[oldId];
+      delete s.overrides[oldId];
+    }
+  }
+}
+
 function groupLeaves(groups) {
   const out = [];
   for (const g of groups) for (const e of g.entries) out.push(...(typeof e === 'string' ? [e] : e.children || []));
@@ -1120,7 +1144,7 @@ function deleteProduct(p) {
   const sure = confirm(
     `确认从产品库彻底删除 ${p.id}？\n\n` +
     `这条记录会消失，图片链接一起丢失：\n${p.image}\n` +
-    `各站点成员名单与画册排除表里的它也会一并清掉。\n\n` +
+    `各站的成员名单、本站顺序、画册排除表与本站覆盖里的它也会一并清掉。\n\n` +
     `只想让某个站不卖它：用「移出本站」，产品库和其他站不受影响。\n` +
     `只想让它不出现：用「下架」更安全（记录保留，随时能恢复）。\n` +
     `删了可以按 Ctrl+Z 撤销，或在「备份列表」回滚。`
@@ -1130,9 +1154,10 @@ function deleteProduct(p) {
   const i = S.products.findIndex((x) => x.id === p.id);
   if (i === -1) return;
   S.products.splice(i, 1);
-  // 各站的引用必须跟着清，否则 members / catalogOff 里留下幽灵 id，校验会一直报错
+  // 各站的引用必须跟着清，否则 members / order / catalogOff 里留下幽灵 id，校验会一直报错
   for (const s of S.sites) {
     if (Array.isArray(s.members)) s.members = s.members.filter((x) => x !== p.id);
+    if (Array.isArray(s.order)) s.order = s.order.filter((x) => x !== p.id);
     if (Array.isArray(s.catalogOff)) s.catalogOff = s.catalogOff.filter((x) => x !== p.id);
     if (s.overrides && s.overrides[p.id]) delete s.overrides[p.id];
   }
@@ -1441,6 +1466,10 @@ function wire() {
   };
   ['#f-id', '#f-name', '#f-image', '#f-notes'].forEach(undoableText);
 
+  // 改 ID 要记住「本次编辑开始前」的值：逐字符键入时把引用一步步搬过去，
+  // 中途清空输入框就会把空字符串写进成员名单；拖到鼠标离开（change）时一次性从旧 id 搬到新 id 才不会。
+  let idBase;
+  $('#f-id').addEventListener('focus', () => { const r = p(); idBase = r ? r.id : ''; });
   $('#f-id').oninput = (e) => {
     const r = p();
     if (!r) return;
@@ -1452,7 +1481,12 @@ function wire() {
     if (S.checked.has(old)) { S.checked.delete(old); S.checked.add(r.id); }
     $('#e-id').textContent = idProblem(r.id) || '';
   };
-  $('#f-id').onchange = () => renderAll();
+  $('#f-id').onchange = () => {
+    const r = p();
+    // 各站名单跟着走；没真改名（包括敲了又删回去）时 idBase 与新 id 相同，moveSiteRefs 自己跳过
+    if (r) moveSiteRefs(idBase, r.id);
+    renderAll();
+  };
   $('#f-name').oninput = (e) => { const r = p(); if (r) r.name = e.target.value; };
   $('#f-name').onchange = () => renderGrid();
   $('#f-cat').onchange = (e) => { const r = p(); if (r) { snapshot(); r.category = e.target.value; renderAll(); } };
