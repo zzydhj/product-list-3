@@ -334,6 +334,22 @@ function pushAlbum(ownerSite) {
   return plan.rec;
 }
 
+/**
+ * 把某型号从本站成员里去掉（只写数据：不 snapshot、不重渲染、不 toast）。
+ * 本站覆盖与画册排除表里它的条目一起带走：它已不是本站成员，这些配置永远轮不到执行；
+ * 留着不但没人看得懂，将来把型号加回本站时还会悄悄复活一份他自己都忘了的旧设置。
+ */
+function unmember(s, p) {
+  materialiseMembers(s);
+  s.members = s.members.filter((x) => x !== p.id);
+  if (s.overrides && s.overrides[p.id]) delete s.overrides[p.id];
+  if (Array.isArray(s.catalogOff)) s.catalogOff = s.catalogOff.filter((x) => x !== p.id);
+  S.checked.delete(p.id);
+  // 与真删除同一套处理：卡片已从本站网格消失，右侧就不能再停在一个左边选不中的型号上，
+  // 否则覆盖控件会静默回落到默认值，看着像“覆盖还在、只是表单脏了”。
+  if (S.selId === p.id) S.selId = null;
+}
+
 /** 移出本站：只删本站名单里的这一条，产品库里还在，别的站也在 */
 function removeMember(p) {
   const s = site();
@@ -342,24 +358,34 @@ function removeMember(p) {
   if (!ownsMembers(s)) {
     return toast(`${s.key} 没有自己的成员名单：请到它对应的选款站点里移出成员`, 'bad');
   }
-  snapshot();
-  materialiseMembers(s);
-  s.members = s.members.filter((x) => x !== p.id);
-  // 本站覆盖与画册排除表里它的条目一起带走：它已不是本站成员，这些配置永远轮不到执行；
-  // 留着不但没人看得懂，将来把型号加回本站时还会悄悄复活一份他自己都忘了的旧设置。
   const hadOv = Boolean(s.overrides && s.overrides[p.id]);
-  if (hadOv) delete s.overrides[p.id];
   const hadOff = Array.isArray(s.catalogOff) && s.catalogOff.includes(p.id);
-  if (hadOff) s.catalogOff = s.catalogOff.filter((x) => x !== p.id);
-  S.checked.delete(p.id);
-  // 与真删除同一套处理：卡片已从本站网格消失，右侧就不能再停在一个左边选不中的型号上，
-  // 否则覆盖控件会静默回落到默认值，看着像“覆盖还在、只是表单脏了”。
-  if (S.selId === p.id) S.selId = null;
+  snapshot();
+  unmember(s, p);
   renderAll();
   const cleaned = hadOv && hadOff ? '，本站覆盖与画册排除里的它一并清掉了'
     : hadOv ? '，本站覆盖也一并清掉了' : hadOff ? '，画册排除里的它也一并清掉了' : '';
   toast(`已把 ${p.id} 移出 ${s.key}（产品库和其他站点未受影响${cleaned}）`);
 }
+
+/**
+ * 本站两面都不会出现这个型号（选款页本站下架 + 画册也不印）时，成员关系就没意义了：
+ * 留在网格里只会挂一枚「本站不显示」的标签（用户两次否掉这种卡片），而取消这份本站下架的
+ * 唯一入口也正是那张卡片 —— 只藏不移等于把它锁死。所以当场按「移出本站」处理：
+ * 覆盖与画册排除一起清掉，产品库那份不动，以后要卖从「从产品库添加」重新勾回来。
+ * 只在站点视图调用：产品库视图改的是全局默认值，不能反过来动各站成员名单（串站）。
+ */
+function dropIfUnshown(p) {
+  if (isLibrary()) return false;
+  const s = memberSource();
+  if (!ownsMembers(s)) return false;
+  if (stateAt(p, s) !== 'hidden') return false;
+  if (inAlbum(albumSite(), p)) return false;
+  unmember(s, p);
+  return true;
+}
+
+const dropNote = (p) => toast(`${p.id} 选款页已下架、画册也不印：本站两面都不会出现它，已移出本站（产品库还在，要再卖从「从产品库添加」勾回来）`);
 
 // ---------------------------------------------------------------- 从产品库挑型号（勾选式）
 
@@ -1427,7 +1453,10 @@ function openCtx(x, y, p) {
   // 站点视图下这三个开关写的是本站覆盖，不能把产品库默认值与其他站一起改了
   const setState = (v) => {
     if (isLibrary()) { setField(p, 'form', v); return; }
-    snapshot(); setOverride(p, 'form', v); renderAll();
+    snapshot(); setOverride(p, 'form', v);
+    const dropped = dropIfUnshown(p);
+    renderAll();
+    if (dropped) dropNote(p);
   };
   item(cur === 'disabled' ? '取消置灰（变正常可选）' : '置灰（图片可放大、数量不可填）', () => setState(cur === 'disabled' ? 'normal' : 'disabled'));
   item(cur === 'presale' ? '取消预售（恢复正常可选）' : '设为预售（数量框显示 Pre Sale）', () => setState(cur === 'presale' ? 'normal' : 'presale'));
@@ -1443,7 +1472,10 @@ function openCtx(x, y, p) {
     item(inAlbum(albumSite(), p) ? '从本站画册移除' : '加入本站画册', () => {
       const s = albumSite();
       if (!s) return;
-      snapshot(); setInAlbum(s, p, !inAlbum(s, p)); renderAll();
+      snapshot(); setInAlbum(s, p, !inAlbum(s, p));
+      const dropped = dropIfUnshown(p);
+      renderAll();
+      if (dropped) dropNote(p);
     });
   }
   if (isLibrary()) {
@@ -1771,6 +1803,8 @@ function wire() {
       const act = b.dataset.batch;
       if (act === 'clear') { S.checked.clear(); renderGrid(); return; }
       snapshot();
+      const n = S.checked.size;
+      let dropped = 0;
       for (const id of S.checked) {
         const p = findProduct(id);
         if (!p) continue;
@@ -1778,9 +1812,10 @@ function wire() {
         // 批量也要按上下文分流：在 TPU 里批量置灰不能把主站也置灰了
         else if (isLibrary()) p.form = act;
         else setOverride(p, 'form', act);
+        if (dropIfUnshown(p)) dropped++;
       }
       renderAll();
-      toast(`已批量修改 ${S.checked.size} 项`);
+      toast(`已批量修改 ${n} 项` + (dropped ? `，其中 ${dropped} 个本站两面都不出现、已一并移出本站` : ''));
     };
   }
 
@@ -1823,7 +1858,10 @@ function wire() {
   $('#f-catalog').onchange = (e) => {
     const r = p(); const s = albumSite();
     if (!r || !s) return;
-    snapshot(); setInAlbum(s, r, e.target.checked); renderAll();
+    snapshot(); setInAlbum(s, r, e.target.checked);
+    const dropped = dropIfUnshown(r);
+    renderAll();
+    if (dropped) dropNote(r);
   };
   // 逐字符键入时要先记住本次编辑开始前的值，遇到非法输入才能退回去
   let moqBase;
@@ -1861,7 +1899,9 @@ function wire() {
       // 产品库视图改默认值；站点视图只写本站覆盖，选「跟随产品库」则把覆盖删掉
       if (isLibrary()) r.form = rad.value;
       else setOverride(r, 'form', rad.value);
+      const dropped = dropIfUnshown(r);
       renderAll();
+      if (dropped) dropNote(r);
     };
   }
   // 输入框获得焦点时留一份快照：这样「改完一撤销」能回到改之前，
