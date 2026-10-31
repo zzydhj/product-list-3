@@ -435,7 +435,8 @@
         "星空蓝-水贴A-6",
         "星空黑-水贴A-7",
         "星空红-水贴A-9",
-        "幻影蓝A-10"
+        "幻影蓝A-10",
+        "暗红色D-7"
       ],
       "promo": {
         "enabled": true,
@@ -591,6 +592,9 @@
         },
         "HY003-A": {
           "form": "presale"
+        },
+        "暗红色D-7": {
+          "form": "hidden"
         }
       },
       "raw": {
@@ -1166,12 +1170,6 @@
         }
       ],
       "overrides": {
-        "HY001": {
-          "form": "hidden"
-        },
-        "HY002": {
-          "form": "hidden"
-        },
         "HY004": {
           "form": "hidden"
         }
