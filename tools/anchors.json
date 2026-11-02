@@ -4,7 +4,8 @@
     "2026-10-20 经授权把 5 个已下架产品（Acrylic display box 下的 For-PSA 系列）移出画册：catalog.live 415 → 410，从此画册与选款表生效数一致。置灰的 5 个仍留在画册里，那是故意留的「可看不可选」展示位。",
     "2026-10-22 在主站把这 5 个 For-PSA 恢复成「正常可选」并设本站起订量 50、放回画册：产品库里它们仍是 hidden，只有 card-holder 写了本站覆盖，所以 TPU 与其他站一律不变。card-holder.live 与 catalog.live 410 → 415，Acrylic display box 19 → 24。",
     "2026-10-22 从产品库彻底删除 PTCG-ETB-(5mm)，各站成员名单/本站覆盖/画册排除里的引用已自动清理、四个页面 0 处残留：card-holder.live 与 catalog.live 415 → 414，Acrylic display box 24 → 23。",
-    "2026-10-31 采纳：card-holder.live 414 → 413；card-holder.perGroup {\"Grading Slab Protection\":182,\"Silicone Bumper\":40,\"PSA/BGS Aluminum\":126,\"Magnetic PSA Base\":11,\"Acrylic display box\":23,\"PP Card Binder\":16,\"PP Card Divider\":16} → {\"Grading Slab Protection\":182,\"Silicone Bumper\":40,\"PSA/BGS Aluminum\":125,\"Magnetic PSA Base\":11,\"Acrylic display box\":23,\"PP Card Binder\":16,\"PP Card Divider\":16}；catalog.live 414 → 413（原因：D-7 本站下架并移出主站画册（用户有意，后台已保存））"
+    "2026-10-31 采纳：card-holder.live 414 → 413；card-holder.perGroup {\"Grading Slab Protection\":182,\"Silicone Bumper\":40,\"PSA/BGS Aluminum\":126,\"Magnetic PSA Base\":11,\"Acrylic display box\":23,\"PP Card Binder\":16,\"PP Card Divider\":16} → {\"Grading Slab Protection\":182,\"Silicone Bumper\":40,\"PSA/BGS Aluminum\":125,\"Magnetic PSA Base\":11,\"Acrylic display box\":23,\"PP Card Binder\":16,\"PP Card Divider\":16}；catalog.live 414 → 413（原因：D-7 本站下架并移出主站画册（用户有意，后台已保存））",
+    "2026-11-02 采纳：card-holder.categories 34 → 31；TPU.perGroup {\"PSA Back Single Panel\":48,\"PSA Single Panel No Glitter\":5,\"PSA with Double panels\":22,\"PSA Magnetic Double Panels\":4,\"PSA no Plate\":41,\"BGS with panel\":14,\"BGS Single Panel No Glitter\":5,\"ACE with panel\":11,\"CGC with panel\":12,\"TAG with panel\":12,\"TAG Single Panel No Glitter\":5,\"PSA Glossy Finish No Plate\":3} → {\"PSA Back Single Panel\":53,\"PSA Single Panel No Glitter\":0,\"PSA with Double panels\":22,\"PSA Magnetic Double Panels\":4,\"PSA no Plate\":41,\"BGS with panel\":19,\"BGS Single Panel No Glitter\":0,\"ACE with panel\":11,\"CGC with panel\":12,\"TAG with panel\":17,\"TAG Single Panel No Glitter\":0,\"PSA Glossy Finish No Plate\":3}（原因：未检测到型号或站点成员的增删（改的是状态、起订量、画册、顺序，或者只是重复保存））"
   ],
   "card-holder": {
     "live": 413,
@@ -17,7 +18,7 @@
       "PP Card Binder": 16,
       "PP Card Divider": 16
     },
-    "categories": 34,
+    "categories": 31,
     "disabled": [
       "ALL-A",
       "ALL-B",
@@ -30,17 +31,17 @@
     "live": 182,
     "perGroupIsPerCategory": true,
     "perGroup": {
-      "PSA Back Single Panel": 48,
-      "PSA Single Panel No Glitter": 5,
+      "PSA Back Single Panel": 53,
+      "PSA Single Panel No Glitter": 0,
       "PSA with Double panels": 22,
       "PSA Magnetic Double Panels": 4,
       "PSA no Plate": 41,
-      "BGS with panel": 14,
-      "BGS Single Panel No Glitter": 5,
+      "BGS with panel": 19,
+      "BGS Single Panel No Glitter": 0,
       "ACE with panel": 11,
       "CGC with panel": 12,
-      "TAG with panel": 12,
-      "TAG Single Panel No Glitter": 5,
+      "TAG with panel": 17,
+      "TAG Single Panel No Glitter": 0,
       "PSA Glossy Finish No Plate": 3
     }
   },
