@@ -1052,6 +1052,10 @@ function renderSiteForm() {
     mk('字体栈', 'fontFamily', 'text');
   }
 
+  // 画册的分类先后没有独立开关：它等于「型号顺序里各分类第一次出现的先后」，
+  // 所以想整类挪顺序只能挪型号 —— 这一节给分类一个整块入口（一次一坨，不必一个个拖）。
+  box.appendChild(orderPanel());
+
   box.appendChild(el('div', 'group-title', '危险操作'));
   const del = el('button', '', '删除本站点定义（不删文件）');
   del.onclick = async () => {
@@ -1194,6 +1198,105 @@ function moveLeaf(g, e, delta) {
   g.entries.splice(i, 1);
   g.entries.splice(j, 0, e);
   renderAll();
+}
+
+/**
+ * 本站页面上的分类先后：按本站型号顺序走，连续成一坨算一块。
+ * 画册的目录与分类大标题读的就是这个（成品页里 categories = [...new Set(products.map(p => p.category))]），
+ * 选款页里同一组内各分类卡片的先后也是它。
+ * 与「分组」里叶子的 ↑↓ 是两回事 —— 那一对箭头只改选款页侧栏的列表顺序，不动型号顺序。
+ * 取数走 sitePool()，与网格同一把尺：页面上不出现的分类不列在这里（挪它们不会有任何可见效果）。
+ */
+function catRuns() {
+  const out = [];
+  for (const p of sitePool()) {
+    if (!out.length || out[out.length - 1].cat !== p.category) out.push({ cat: p.category, n: 1 });
+    else out[out.length - 1].n++;
+  }
+  return out;
+}
+
+function orderPanel() {
+  const src = memberSource();
+  const runs = catRuns();
+  const box = el('div', '');
+  box.appendChild(el('div', 'group-title', src === site()
+    ? '页面里的分类顺序（画册目录 = 这个顺序）'
+    : `页面里的分类顺序（画册跟随「${src.key}」站，在这里改就是改那个站）`));
+  if (!runs.length) {
+    box.appendChild(el('div', 'hint', '本站页面上还没有分类：先把成员与分组配好。'));
+    return box;
+  }
+  box.appendChild(el('div', 'hint', '点 ↑↓ 把这一类的全部本站型号作为整块前移 / 后移一位。改的是本站型号顺序：画册分类先后与选款页卡片先后一起变；侧栏里分类的先后由上面「分组」里的 ↑↓ 决定，两处互不影响。'));
+  const list = el('div', 'ord');
+  runs.forEach((r, i) => {
+    const row = el('div', 'leaf', `${i + 1}. ${r.cat}`);
+    row.appendChild(el('span', 'n', `${r.n} 个`));
+    const up = el('button', '', '↑');
+    up.title = '整块前移一位（与上一个分类交换）';
+    up.disabled = i === 0;
+    up.onclick = () => moveCategoryBlock(i, -1);
+    const dn = el('button', '', '↓');
+    dn.title = '整块后移一位（与下一个分类交换）';
+    dn.disabled = i === runs.length - 1;
+    dn.onclick = () => moveCategoryBlock(i, +1);
+    row.append(up, dn);
+    list.appendChild(row);
+  });
+  box.appendChild(list);
+  if (Array.isArray(src.order)) {
+    const clr = el('button', '', '清除本站顺序（回到产品库顺序）');
+    clr.onclick = async () => {
+      if (!(await askOk('清除本站顺序', `本站已经排了 ${src.order.length} 个型号的顺序。\n清除后页面顺序回到产品库的默认顺序，你在本站做过的整块与单个挪动都会没有。`))) return;
+      snapshot();
+      delete src.order;
+      renderAll();
+      toast('已清除本站顺序，点「保存并生成」写进产物');
+    };
+    box.appendChild(clr);
+  } else {
+    box.appendChild(el('div', 'hint', `本站还没有自己的顺序表，现在用的是产品库顺序；第一次整块挪动会把本站 ${runs.reduce((a, r) => a + r.n, 0)} 个型号排进 sites.json 的 order，只影响本站。`));
+  }
+  return box;
+}
+
+/**
+ * 整块挪一个分类：把它在本站型号顺序里的那一段剪出来，与相邻那一段交换位置。
+ * 只写本站 order（画册视图写的是它 owner 那份），产品库顺序与其它站点一律不动。
+ * 两块之间可能夹着「页面上不出现」的型号（分组外的那些）：让它们原地不动，
+ * 否则一次可见的整块交换会顺带重排几十个看不见的 id，diff 里就说不清是谁干的了。
+ */
+function moveCategoryBlock(i, delta) {
+  const runs = catRuns();
+  const j = i + delta;
+  if (i < 0 || j < 0 || j >= runs.length) return;            // 到头就什么都不做
+  const src = memberSource();
+  const ids = orderedMembers(src);
+  // 该分类在本站名单里占的区间；被别的分类夹开就不算「一坨」，不猜该怎么挪
+  const span = (cat) => {
+    const hit = ids.map((id) => { const p = findProduct(id); return p && p.category === cat; });
+    const a = hit.indexOf(true);
+    const b = hit.lastIndexOf(true) + 1;
+    return { a, b, gap: a === -1 || hit.slice(a, b).includes(false) };
+  };
+  const A = span(runs[i].cat);
+  const B = span(runs[j].cat);
+  if (A.gap || B.gap) {
+    return toast(`「${A.gap ? runs[i].cat : runs[j].cat}」在本站顺序里被别的型号夹开了，整块挪不了：先用拖拽把它挪成一坨`, 'bad');
+  }
+  const first = A.a < B.a ? A : B;
+  const second = A.a < B.a ? B : A;
+  const out = [
+    ...ids.slice(0, first.a),
+    ...ids.slice(second.a, second.b),                        // 后面那段提到前面
+    ...ids.slice(first.b, second.a),                         // 中间夹着的那些原地不动
+    ...ids.slice(first.a, first.b),
+    ...ids.slice(second.b),
+  ];
+  snapshot();
+  src.order = out;
+  renderAll();
+  toast(`${runs[i].cat} 整块${delta < 0 ? '前移到 ' + runs[j].cat + ' 前面' : '后移到 ' + runs[j].cat + ' 后面'}（${runs[i].n} 个型号）：点「保存并生成」写进本站，顶栏「撤销」可退`);
 }
 
 /**

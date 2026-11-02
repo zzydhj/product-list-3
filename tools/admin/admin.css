@@ -612,6 +612,28 @@ button.danger:hover {
     line-height: 1;
 }
 
+/* 页面分类顺序面板：一行一块竖排。沿用 .leaf 的小按钮，但箭头不是危险动作，不用红字 */
+.ord {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    margin-bottom: 8px;
+}
+
+.ord .leaf {
+    max-width: 100%;
+}
+
+.ord .leaf button {
+    color: var(--text);
+}
+
+.ord .leaf button:disabled {
+    color: var(--muted);
+    cursor: default;
+}
+
 .log {
     white-space: pre-wrap;
     word-break: break-all;
