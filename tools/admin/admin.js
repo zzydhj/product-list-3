@@ -1142,7 +1142,9 @@ function groupBlock(s, g) {
       // 这一步以前是静默改数据：表面上只是「分组少了一个分类」，实际让本站几十个型号
       // 两边都不再显示。现在先把个数问清楚再动。
       const src = s.type === 'catalog' ? (S.sites.find((x2) => x2.key === s.owner) || s) : s;
-      const elsewhere = s.groups.some((gg) => gg !== g && groupLeaves(gg.entries || []).includes(e));
+      // 问的是「这个叶子是不是还被别的分组收录」：groupLeaves 收的是分组数组，
+      // 传 gg.entries（叶子数组）会让它内部对字符串取 .entries 得到 undefined 而抛错。
+      const elsewhere = s.groups.some((gg) => gg !== g && groupLeaves([gg]).includes(e));
       const n = elsewhere ? 0 : S.products.filter((p) => p.category === e && membersAsOf(src).includes(p.id)).length;
       if (n && !(await askOk('从分组里移掉这个分类',
         `「${e}」下有 ${n} 个本站型号。\n移掉后它们在选款页和本站画册都不再显示（仍算本站成员，把分类放回分组即恢复）。`))) return;
@@ -1797,6 +1799,14 @@ function wire() {
   $('#btnCheck').onclick = runCheck;
   $('#btnBackups').onclick = listBackups;
   dlgWire();                            // 页内输入 / 确认弹窗的按钮与键盘，只绑一次
+  // async 事件处理器里抛出的异常不会触发 window.onerror（只变成未处理的 promise rejection），
+  // 表现就是「按钮点了没反应、控制台也安静」—— 分组里的分类叉号就被一个写错的函数调用弄死过一整轮。
+  // 兜底：任何未处理的 rejection 都提示到屏幕上，不让它静默。
+  window.addEventListener('unhandledrejection', (e) => {
+    const m = (e.reason && (e.reason.message || e.reason)) || String(e.reason);
+    console.error(e.reason);
+    toast('操作出错：' + m, 'bad');
+  });
 
   for (const b of document.querySelectorAll('#batchbar button')) {
     b.onclick = () => {
