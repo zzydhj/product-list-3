@@ -2,77 +2,14 @@
   "_readme": "产品主数据（唯一权威）。数组顺序 = 选款表网格与画册的默认渲染顺序。form: normal=正常可选 / disabled=选款表置灰但图片可放大 / presale=预售（数量框不可填）/ hidden=选款表不渲染。moq 是起订量（可选）。notes 是分节注释，生成时还原在各型号上方。画册归属不再存在这里，改由 sites.json 各选款站的 catalogOff 决定（每本画册只管自己）。",
   "products": [
     {
-      "id": "HY029-D",
-      "name": "HY029-D",
-      "category": "PSA Back Single Panel",
-      "image": "https://hande.zzydhj.com/hande/HY029-D.jpg",
-      "form": "normal",
-      "notes": [
-        "PSA With back panel"
-      ]
-    },
-    {
-      "id": "HY036-D",
-      "name": "HY036-D",
-      "category": "PSA Back Single Panel",
-      "image": "https://hande.zzydhj.com/hande/HY036-D.jpg",
-      "form": "normal"
-    },
-    {
-      "id": "HY045-D",
-      "name": "HY045-D",
-      "category": "PSA Back Single Panel",
-      "image": "https://hande.zzydhj.com/hande/HY045-D.jpg",
-      "form": "normal"
-    },
-    {
-      "id": "HY046-D",
-      "name": "HY046-D",
-      "category": "PSA Back Single Panel",
-      "image": "https://hande.zzydhj.com/hande/HY046-D.jpg",
-      "form": "normal"
-    },
-    {
-      "id": "HY050-D",
-      "name": "HY050-D",
-      "category": "PSA Back Single Panel",
-      "image": "https://hande.zzydhj.com/hande/HY050-D.jpg",
-      "form": "normal"
-    },
-    {
-      "id": "HY053-D",
-      "name": "HY053-D",
-      "category": "PSA Back Single Panel",
-      "image": "https://hande.zzydhj.com/hande/HY053-D.jpg",
-      "form": "normal"
-    },
-    {
-      "id": "HY064-D",
-      "name": "HY064-D",
-      "category": "PSA Back Single Panel",
-      "image": "https://hande.zzydhj.com/hande/HY064-D.jpg",
-      "form": "normal"
-    },
-    {
-      "id": "HY066-D",
-      "name": "HY066-D",
-      "category": "PSA Back Single Panel",
-      "image": "https://hande.zzydhj.com/hande/HY066-D.jpg",
-      "form": "normal"
-    },
-    {
-      "id": "HY071-D",
-      "name": "HY071-D",
-      "category": "PSA Back Single Panel",
-      "image": "https://hande.zzydhj.com/hande/HY071-D.jpg",
-      "form": "normal"
-    },
-    {
       "id": "HY001-D",
       "name": "HY001-D",
       "category": "PSA Back Single Panel",
       "image": "https://hande.zzydhj.com/hande/HY001-D.jpg",
-      "form": "normal"
+      "form": "normal",
+      "notes": [
+        "PSA With back panel"
+      ]
     },
     {
       "id": "HY002-D",
@@ -152,6 +89,13 @@
       "form": "normal"
     },
     {
+      "id": "HY029-D",
+      "name": "HY029-D",
+      "category": "PSA Back Single Panel",
+      "image": "https://hande.zzydhj.com/hande/HY029-D.jpg",
+      "form": "normal"
+    },
+    {
       "id": "HY030-D",
       "name": "HY030-D",
       "category": "PSA Back Single Panel",
@@ -194,6 +138,13 @@
       "form": "normal"
     },
     {
+      "id": "HY036-D",
+      "name": "HY036-D",
+      "category": "PSA Back Single Panel",
+      "image": "https://hande.zzydhj.com/hande/HY036-D.jpg",
+      "form": "normal"
+    },
+    {
       "id": "HY037-D",
       "name": "HY037-D",
       "category": "PSA Back Single Panel",
@@ -205,6 +156,20 @@
       "name": "HY038-D",
       "category": "PSA Back Single Panel",
       "image": "https://hande.zzydhj.com/hande/HY038-D.jpg",
+      "form": "normal"
+    },
+    {
+      "id": "HY045-D",
+      "name": "HY045-D",
+      "category": "PSA Back Single Panel",
+      "image": "https://hande.zzydhj.com/hande/HY045-D.jpg",
+      "form": "normal"
+    },
+    {
+      "id": "HY046-D",
+      "name": "HY046-D",
+      "category": "PSA Back Single Panel",
+      "image": "https://hande.zzydhj.com/hande/HY046-D.jpg",
       "form": "normal"
     },
     {
@@ -222,6 +187,13 @@
       "form": "normal"
     },
     {
+      "id": "HY050-D",
+      "name": "HY050-D",
+      "category": "PSA Back Single Panel",
+      "image": "https://hande.zzydhj.com/hande/HY050-D.jpg",
+      "form": "normal"
+    },
+    {
       "id": "HY051-D",
       "name": "HY051-D",
       "category": "PSA Back Single Panel",
@@ -233,6 +205,13 @@
       "name": "HY052-D",
       "category": "PSA Back Single Panel",
       "image": "https://hande.zzydhj.com/hande/HY052-D.jpg",
+      "form": "normal"
+    },
+    {
+      "id": "HY053-D",
+      "name": "HY053-D",
+      "category": "PSA Back Single Panel",
+      "image": "https://hande.zzydhj.com/hande/HY053-D.jpg",
       "form": "normal"
     },
     {
@@ -299,10 +278,24 @@
       "form": "normal"
     },
     {
+      "id": "HY064-D",
+      "name": "HY064-D",
+      "category": "PSA Back Single Panel",
+      "image": "https://hande.zzydhj.com/hande/HY064-D.jpg",
+      "form": "normal"
+    },
+    {
       "id": "HY065-D",
       "name": "HY065-D",
       "category": "PSA Back Single Panel",
       "image": "https://hande.zzydhj.com/hande/HY065-D.png",
+      "form": "normal"
+    },
+    {
+      "id": "HY066-D",
+      "name": "HY066-D",
+      "category": "PSA Back Single Panel",
+      "image": "https://hande.zzydhj.com/hande/HY066-D.jpg",
       "form": "normal"
     },
     {
@@ -331,6 +324,13 @@
       "name": "HY070-D",
       "category": "PSA Back Single Panel",
       "image": "https://hande.zzydhj.com/hande/HY070-D.jpg",
+      "form": "normal"
+    },
+    {
+      "id": "HY071-D",
+      "name": "HY071-D",
+      "category": "PSA Back Single Panel",
+      "image": "https://hande.zzydhj.com/hande/HY071-D.jpg",
       "form": "normal"
     },
     {
@@ -2596,7 +2596,7 @@
     },
     {
       "id": "PTCG-SPC-(5mm+8mm)",
-      "name": "PTCG-SPC-(5mm+8mm).jpg",
+      "name": "PTCG-SPC-(5mm+8mm)",
       "category": "Acrylic Booster Box Case",
       "image": "https://hande.zzydhj.com/hande/PTCG-SPC-(5mm+8mm).jpg",
       "form": "normal"
