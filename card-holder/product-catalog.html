@@ -466,16 +466,16 @@
         // 屏幕平铺水印，用于防截图盗用。所有可调项集中在此对象。
         const WATERMARK_CONFIG = {
         /* GEN:WATERMARK BEGIN 此区块由生成工具托管，请勿手改 */
-            enabled: true,                          // 一键开关：false = 不显示水印
-            text: 'Foamgrid',           // 水印文字（英文通用字样）
-            color: '#777777',                       // 白色：产品图为黑底，白字在黑底/深色区最清晰
-            opacity: 0.3,                          // 当前 0.5 为调试高值；确认能显示后建议调到 0.15 ~ 0.25
-            fontSize: 15,                           // 字号（px）
-            fontWeight: 600,                        // 加粗：低透明度下仍清晰可辨
-            angle: -28,                             // 斜向角度（度），负值 = 左上到右下
-            tileWidth: 240,                         // 平铺单元宽度（px）
-            tileHeight: 150,                        // 平铺单元高度（px）
-            fontFamily: 'Arial, "Helvetica Neue", sans-serif',
+            enabled: false,                 // 一键开关：false = 不显示水印
+            text: 'Foamgrid',               // 水印文字（英文通用字样）
+            color: '#777777',               // 白色：产品图为黑底，白字在黑底/深色区最清晰
+            opacity: 0.3,                   // 透明度，建议 0.15 ~ 0.25
+            fontSize: 15,                   // 字号（px）
+            fontWeight: 600,                // 加粗：低透明度下仍清晰可辨
+            angle: -28,                     // 斜向角度（度），负值 = 左上到右下
+            tileWidth: 240,                 // 平铺单元宽度（px）
+            tileHeight: 150,                // 平铺单元高度（px）
+            fontFamily: 'Arial, "Helvetica Neue", sans-serif', // 字体栈
         /* GEN:WATERMARK END */
         };
 
@@ -585,10 +585,10 @@
             { id: 'PSAD-054', category: 'PSA with Double panels', name: 'PSAD-054', image: 'https://hande.zzydhj.com/hande/PSAD-054.jpg' },
             { id: 'PSAD-056', category: 'PSA with Double panels', name: 'PSAD-056', image: 'https://hande.zzydhj.com/hande/PSAD-056.jpg' },
 
-            { id: 'PSAD-071', category: 'PSA Magnetic Double Panels', name: 'PSAD-071', image: 'https://hande.zzydhj.com/hande/PSAD-071.jpg' },
-            { id: 'PSAD-072', category: 'PSA Magnetic Double Panels', name: 'PSAD-072', image: 'https://hande.zzydhj.com/hande/PSAD-072.jpg' },
-            { id: 'PSAD-073', category: 'PSA Magnetic Double Panels', name: 'PSAD-073', image: 'https://hande.zzydhj.com/hande/PSAD-073.jpg' },
-            { id: 'PSAD-074', category: 'PSA Magnetic Double Panels', name: 'PSAD-074', image: 'https://hande.zzydhj.com/hande/PSAD-074.jpg' },
+            { id: 'PSAD-071', category: 'PSA Magnetic Double Panels', name: 'PSAD-071', image: 'https://hande.zzydhj.com/hande/PSAD-071.jpg', moq: 500 },
+            { id: 'PSAD-072', category: 'PSA Magnetic Double Panels', name: 'PSAD-072', image: 'https://hande.zzydhj.com/hande/PSAD-072.jpg', moq: 500 },
+            { id: 'PSAD-073', category: 'PSA Magnetic Double Panels', name: 'PSAD-073', image: 'https://hande.zzydhj.com/hande/PSAD-073.jpg', moq: 500 },
+            { id: 'PSAD-074', category: 'PSA Magnetic Double Panels', name: 'PSAD-074', image: 'https://hande.zzydhj.com/hande/PSAD-074.jpg', moq: 500 },
 
             { id: 'BGS002-D', category: 'BGS with panel', name: 'BGS002-D', image: 'https://hande.zzydhj.com/hande/BGS002-D.jpg' },
             { id: 'BGS005-D', category: 'BGS with panel', name: 'BGS005-D', image: 'https://hande.zzydhj.com/hande/BGS005-D.jpg' },

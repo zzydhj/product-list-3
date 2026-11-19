@@ -1478,7 +1478,7 @@
       "productsIndent": "            ",
       "owner": "card-holder",
       "watermark": {
-        "enabled": true,
+        "enabled": false,
         "text": "Foamgrid",
         "color": "#777777",
         "opacity": 0.3,
